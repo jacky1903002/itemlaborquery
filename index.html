@@ -127,7 +127,7 @@
                     <div class="flex items-center gap-4 text-slate-600 text-lg font-bold"><i class="fa-solid fa-spinner animate-spin text-2xl text-blue-600"></i><span>正在從 Firebase 載入企業資料庫...</span></div>
                 </div>
 
-                <!-- 畫面一：品號查詢系統 (單行 3 欄並排，已完全移除下方空白與無資料提示區塊) -->
+                <!-- 畫面一：品號查詢系統 -->
                 <div v-else-if="activeTab === 'cross'" class="space-y-6">
                     <div class="bg-white p-6 sm:p-7 rounded-2xl shadow-sm border border-slate-200 space-y-6">
                         <div class="flex flex-wrap justify-between items-center gap-4 border-b border-slate-100 pb-3">
@@ -186,14 +186,39 @@
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div class="px-6 py-5 border-b border-slate-200 flex flex-wrap justify-between items-center gap-4 bg-slate-50/80">
-                            <h3 class="font-extrabold text-slate-900 text-base">工時完整明細表 (共找到 <span class="text-blue-600">{{ laborResults.length }}</span> 筆相關製程)</h3>
-                            <div class="bg-emerald-100/70 border border-emerald-200 text-emerald-900 px-5 py-2.5 rounded-xl text-sm font-bold shadow-xs">
-                                整體工時總計: <span class="text-lg font-black text-emerald-700">{{ totalManHours }}</span> 小時 (h)
+                    <!-- 工時明細與獨立匯出區塊 -->
+                    <div id="labor-capture-area" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden space-y-4 p-6 sm:p-8">
+                        <div class="flex flex-wrap justify-between items-center gap-4 border-b border-slate-200 pb-5">
+                            <div>
+                                <h3 class="font-extrabold text-slate-900 text-lg">工時完整明細表 (共找到 <span class="text-blue-600">{{ laborResults.length }}</span> 筆相關製程)</h3>
+                                <div class="text-sm font-bold text-emerald-700 mt-1">
+                                    整體工時總計: <span class="text-base font-black">{{ totalManHours }}</span> 小時 (h)
+                                </div>
+                            </div>
+                            <!-- 一鍵匯出按鈕 -->
+                            <div class="flex flex-wrap items-center gap-2">
+                                <button @click="exportLaborExcel" class="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-sm font-bold rounded-xl transition shadow-xs flex items-center gap-1.5">
+                                    <i class="fa-solid fa-file-excel text-emerald-600"></i><span>匯出 Excel</span>
+                                </button>
+                                <button @click="exportLaborPNG" class="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-bold rounded-xl transition shadow-xs flex items-center gap-1.5">
+                                    <i class="fa-solid fa-camera text-indigo-600"></i><span>一鍵匯出 PNG</span>
+                                </button>
                             </div>
                         </div>
-                        <div class="overflow-x-auto">
+
+                        <!-- 製程名稱累計工時統計結果卡片區塊 -->
+                        <div v-if="lineNameSummary.length > 0" class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3"><i class="fa-solid fa-chart-pie mr-1 text-blue-600"></i> 製程名稱 (Line Name) 累計工時統計結果</h4>
+                            <div class="flex flex-wrap gap-2.5">
+                                <div v-for="(stat, idx) in lineNameSummary" :key="idx" class="bg-white px-3.5 py-2 rounded-lg border border-slate-200 shadow-xs flex items-center gap-2 text-sm font-bold text-slate-800">
+                                    <span class="text-blue-700 font-extrabold">{{ stat.name }}</span>
+                                    <span class="text-slate-300">|</span>
+                                    <span class="text-emerald-700 font-mono font-black">{{ stat.total }} h</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto pt-2">
                             <table class="w-full text-left border-collapse text-base">
                                 <thead>
                                     <tr class="bg-slate-100 text-slate-700 text-xs font-black uppercase tracking-wider border-b border-slate-200">
@@ -438,6 +463,27 @@
                     });
                 };
 
+                const exportLaborExcel = () => {
+                    if (laborResults.value.length === 0) {
+                        alert("目前沒有可供匯出的工時明細資料。");
+                        return;
+                    }
+                    const worksheet = XLSX.utils.json_to_sheet(laborResults.value);
+                    const workbook = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(workbook, worksheet, "工時明細表");
+                    XLSX.writeFile(workbook, "Labor_Results_" + new Date().toISOString().slice(0,10) + ".xlsx");
+                };
+
+                const exportLaborPNG = () => {
+                    const captureElement = document.getElementById('labor-capture-area');
+                    html2canvas(captureElement, { scale: 2 }).then(canvas => {
+                        const link = document.createElement('a');
+                        link.download = 'Labor_Table_' + new Date().toISOString().slice(0,10) + '.png';
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+                    });
+                };
+
                 const onCrossInput = (changedField) => {
                     if (!Array.isArray(allData.value) || allData.value.length === 0) return;
                     
@@ -502,6 +548,22 @@
                     }, 0).toFixed(2);
                 });
 
+                // 計算 Line Name (製程名稱) 的累計工時統計結果
+                const lineNameSummary = computed(() => {
+                    if (!laborResults.value || laborResults.value.length === 0) return [];
+                    const map = {};
+                    laborResults.value.forEach(item => {
+                        const name = item['Line Name'] || '未命名製程';
+                        const val = parseFloat(item['Man hours(h)'] ? item['Man hours(h)'] : 0);
+                        if (!map[name]) map[name] = 0;
+                        map[name] += (isNaN(val) ? 0 : val);
+                    });
+                    return Object.keys(map).map(name => ({
+                        name: name,
+                        total: map[name].toFixed(2)
+                    }));
+                });
+
                 const resetLaborQuery = () => {
                     laborQuery.value = { customer: '', partNo: '', goodsCode: '', custPartNo: '' };
                 };
@@ -509,8 +571,9 @@
                 return {
                     isAuthenticated, loginEmail, loginPassword, loginError, isLoggingIn,
                     handleLogin, handleLogout, isOnline, lastSavedTime, isLoadingData,
-                    activeTab, crossQuery, laborQuery, laborResults, totalManHours,
-                    onCrossInput, resetCrossQuery, resetLaborQuery, seedDefaultData, importJsonFiles, importExcel, exportExcel, exportPNG
+                    activeTab, crossQuery, laborQuery, laborResults, totalManHours, lineNameSummary,
+                    onCrossInput, resetCrossQuery, resetLaborQuery, seedDefaultData, importJsonFiles, importExcel, exportExcel, exportPNG,
+                    exportLaborExcel, exportLaborPNG
                 };
             }
         }).mount('#app');
