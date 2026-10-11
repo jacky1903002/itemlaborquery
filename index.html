@@ -127,12 +127,12 @@
                     <div class="flex items-center gap-4 text-slate-600 text-lg font-bold"><i class="fa-solid fa-spinner animate-spin text-2xl text-blue-600"></i><span>正在從 Firebase 載入企業資料庫...</span></div>
                 </div>
 
-                <!-- 畫面一：品號查詢系統 (支援 5 字符以上多筆符合結果顯示) -->
+                <!-- 畫面一：品號查詢系統 (自動去重、不重複列出) -->
                 <div v-else-if="activeTab === 'cross'" class="space-y-6">
                     <div class="bg-white p-6 sm:p-7 rounded-2xl shadow-sm border border-slate-200 space-y-6">
                         <div class="flex flex-wrap justify-between items-center gap-4 border-b border-slate-100 pb-3">
                             <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
-                                <i class="fa-solid fa-magnifying-glass text-blue-600 text-xl"></i>品號關聯查詢系統 <span class="text-xs font-normal text-slate-500">(任一欄位輸入至少 5 個字元，自動列出所有符合的多筆結果)</span>
+                                <i class="fa-solid fa-magnifying-glass text-blue-600 text-xl"></i>品號關聯查詢系統 <span class="text-xs font-normal text-slate-500">(任一欄位輸入至少 5 個字元，自動列出符合結果且重複不複選)</span>
                             </h2>
                             <button @click="resetCrossQuery" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-xl transition">清除重置</button>
                         </div>
@@ -156,10 +156,10 @@
                         </div>
                     </div>
 
-                    <!-- 品號查詢結果清單區塊 (當任一欄位輸入達 5 字符以上時顯示) -->
+                    <!-- 去重後的品號查詢結果清單區塊 -->
                     <div v-if="crossResults.length > 0" class="bg-white p-6 sm:p-7 rounded-2xl shadow-sm border border-slate-200 space-y-4">
                         <div class="flex flex-wrap justify-between items-center gap-4 border-b border-slate-100 pb-3">
-                            <h3 class="font-extrabold text-slate-900 text-base">符合條件的多筆查詢結果 (共找到 <span class="text-blue-600">{{ crossResults.length }}</span> 筆)</h3>
+                            <h3 class="font-extrabold text-slate-900 text-base">符合條件的查詢結果 (已自動去重，共 <span class="text-blue-600">{{ crossResults.length }}</span> 筆)</h3>
                         </div>
 
                         <div class="space-y-3 max-h-[500px] overflow-y-auto pr-2">
@@ -508,18 +508,17 @@
                     });
                 };
 
-                // 品號查詢系統：輸入達 5 個字元時，列出所有符合的多筆結果
+                // 品號查詢系統：支援 5 字符以上檢索，並自動去除重複項目（若 Part No, Goods Code, Cust Part No 完全相同則只列一筆）
                 const crossResults = computed(() => {
                     if (!Array.isArray(allData.value) || allData.value.length === 0) return [];
                     const p = crossQuery.value.partNo.trim().toLowerCase();
                     const g = crossQuery.value.goodsCode.trim().toLowerCase();
                     const c = crossQuery.value.custPartNo.trim().toLowerCase();
 
-                    // 任一欄位達 5 個字元才開始過濾顯示多筆結果
                     const hasValidInput = (p.length >= 5) || (g.length >= 5) || (c.length >= 5);
                     if (!hasValidInput) return [];
 
-                    return allData.value.filter(item => {
+                    const filtered = allData.value.filter(item => {
                         if (!item) return false;
                         const partVal = String(item['Part No'] || '').toLowerCase();
                         const goodsVal = String(item['Goods Code'] || '').toLowerCase();
@@ -530,6 +529,17 @@
                         const matchCust = !c || custVal.includes(c);
                         return matchPart && matchGoods && matchCust;
                     });
+
+                    // 自動去重 (根據 Part No + Goods Code + Cust Part No 組合唯一性)
+                    const uniqueMap = new Map();
+                    filtered.forEach(item => {
+                        const key = `${String(item['Part No'] || '').trim()}|${String(item['Goods Code'] || '').trim()}|${String(item['Cust Part No'] || '').trim()}`;
+                        if (!uniqueMap.has(key)) {
+                            uniqueMap.set(key, item);
+                        }
+                    });
+
+                    return Array.from(uniqueMap.values());
                 });
 
                 const resetCrossQuery = () => {
