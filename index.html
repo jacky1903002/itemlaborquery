@@ -18,7 +18,7 @@
         body { background-color: #f8fafc; }
     </style>
 </head>
-<body class="text-slate-900 min-h-screen flex flex-col font-sans text-lg">
+<body class="text-slate-900 min-h-screen flex flex-col font-sans text-base">
 
     <div id="app" class="flex flex-col min-h-screen">
 
@@ -111,91 +111,47 @@
 
                 <!-- 檢索工作表切換 Tab -->
                 <div class="max-w-7xl mx-auto px-6 flex gap-8 border-t border-slate-200">
-                    <button @click="activeTab = 'cross'" :class="activeTab === 'cross' ? 'border-blue-600 text-blue-700 font-extrabold bg-blue-50/50' : 'border-transparent text-slate-600 hover:text-slate-900'" class="py-4 px-3 border-b-4 text-lg transition flex items-center gap-2.5 rounded-t-xl">
-                        <i class="fa-solid fa-shuffle text-xl"></i><span>1. 品號查詢系統</span>
+                    <button @click="activeTab = 'cross'" :class="activeTab === 'cross' ? 'border-blue-600 text-blue-700 font-extrabold bg-blue-50/50' : 'border-transparent text-slate-600 hover:text-slate-900'" class="py-4 px-3 border-b-4 text-base transition flex items-center gap-2.5 rounded-t-xl">
+                        <i class="fa-solid fa-shuffle text-lg"></i><span>1. 品號查詢系統</span>
                     </button>
-                    <button @click="activeTab = 'labor'" :class="activeTab === 'labor' ? 'border-blue-600 text-blue-700 font-extrabold bg-blue-50/50' : 'border-transparent text-slate-600 hover:text-slate-900'" class="py-4 px-3 border-b-4 text-lg transition flex items-center gap-2.5 rounded-t-xl">
-                        <i class="fa-solid fa-stopwatch text-xl"></i><span>2. 工時查詢系統</span>
+                    <button @click="activeTab = 'labor'" :class="activeTab === 'labor' ? 'border-blue-600 text-blue-700 font-extrabold bg-blue-50/50' : 'border-transparent text-slate-600 hover:text-slate-900'" class="py-4 px-3 border-b-4 text-base transition flex items-center gap-2.5 rounded-t-xl">
+                        <i class="fa-solid fa-stopwatch text-lg"></i><span>2. 工時查詢系統</span>
                     </button>
                 </div>
             </header>
 
             <!-- 內容主體區 -->
-            <main id="capture-area" class="flex-grow max-w-7xl w-full mx-auto p-6 sm:p-8 space-y-8 bg-[#f8fafc]">
+            <main id="capture-area" class="flex-grow max-w-7xl w-full mx-auto p-6 sm:p-8 space-y-6 bg-[#f8fafc]">
 
                 <div v-if="isLoadingData" class="flex justify-center items-center py-28">
-                    <div class="flex items-center gap-4 text-slate-600 text-xl font-bold"><i class="fa-solid fa-spinner animate-spin text-3xl text-blue-600"></i><span>正在從 Firebase 載入企業資料庫...</span></div>
+                    <div class="flex items-center gap-4 text-slate-600 text-lg font-bold"><i class="fa-solid fa-spinner animate-spin text-2xl text-blue-600"></i><span>正在從 Firebase 載入企業資料庫...</span></div>
                 </div>
 
-                <!-- 畫面一：品號查詢系統 (改為三個橫列並具備聯動查詢與放大字體) -->
-                <div v-else-if="activeTab === 'cross'" class="space-y-6 max-w-4xl mx-auto">
-                    <div class="bg-white p-8 sm:p-10 rounded-3xl shadow-md border border-slate-200 space-y-8">
-                        <div class="border-b border-slate-100 pb-4">
-                            <h2 class="text-2xl font-black text-slate-900 flex items-center gap-3">
-                                <i class="fa-solid fa-magnifying-glass text-blue-600 text-2xl"></i>品號關聯查詢系統
+                <!-- 畫面一：品號查詢系統 (單行 3 欄並排，已完全移除下方空白與無資料提示區塊) -->
+                <div v-else-if="activeTab === 'cross'" class="space-y-6">
+                    <div class="bg-white p-6 sm:p-7 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+                        <div class="flex flex-wrap justify-between items-center gap-4 border-b border-slate-100 pb-3">
+                            <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                <i class="fa-solid fa-magnifying-glass text-blue-600 text-xl"></i>品號關聯查詢系統 <span class="text-xs font-normal text-slate-500">(任一欄位輸入至少 3 個字元自動連動)</span>
                             </h2>
-                            <p class="text-base text-slate-500 mt-1 font-medium">請在任一欄位輸入至少 3 個字元，系統將自動比對並帶出其他對應項目與查詢結果。</p>
+                            <button @click="resetCrossQuery" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-xl transition">清除重置</button>
                         </div>
 
-                        <!-- 三個垂直橫列 -->
-                        <div class="space-y-6">
-                            <!-- 橫列 1 -->
-                            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-                                <label class="block text-lg font-black text-slate-800">1. Part No (產品品號)</label>
-                                <input type="text" v-model="crossQuery.partNo" @input="onCrossInput('partNo')" placeholder="例如: 191" class="w-full px-5 py-4 bg-white border-2 border-slate-300 rounded-xl text-xl font-bold focus:ring-4 focus:ring-blue-600/20 focus:border-blue-600 focus:outline-none transition">
+                        <!-- 3 欄並排橫列 -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">1. Part No (產品品號)</label>
+                                <input type="text" v-model="crossQuery.partNo" @input="onCrossInput('partNo')" placeholder="例如: 191" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none">
                             </div>
 
-                            <!-- 橫列 2 -->
-                            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-                                <label class="block text-lg font-black text-slate-800">2. Goods Code (產品貨號)</label>
-                                <input type="text" v-model="crossQuery.goodsCode" @input="onCrossInput('goodsCode')" placeholder="例如: FAM" class="w-full px-5 py-4 bg-white border-2 border-slate-300 rounded-xl text-xl font-bold focus:ring-4 focus:ring-blue-600/20 focus:border-blue-600 focus:outline-none transition">
+                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">2. Goods Code (產品貨號)</label>
+                                <input type="text" v-model="crossQuery.goodsCode" @input="onCrossInput('goodsCode')" placeholder="例如: FAM" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none">
                             </div>
 
-                            <!-- 橫列 3 -->
-                            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-                                <label class="block text-lg font-black text-slate-800">3. Cust Part No (客戶品號或規格)</label>
-                                <input type="text" v-model="crossQuery.custPartNo" @input="onCrossInput('custPartNo')" placeholder="例如: 002" class="w-full px-5 py-4 bg-white border-2 border-slate-300 rounded-xl text-xl font-bold focus:ring-4 focus:ring-blue-600/20 focus:border-blue-600 focus:outline-none transition">
-                            </div>
-                        </div>
-
-                        <div class="flex justify-end gap-4 pt-4">
-                            <button @click="resetCrossQuery" class="px-8 py-3.5 bg-slate-200 hover:bg-slate-300 text-slate-800 text-lg font-bold rounded-xl transition shadow-xs">清除重置</button>
-                        </div>
-                    </div>
-
-                    <!-- 明確放大的檢索結果區 -->
-                    <div class="bg-white p-8 sm:p-10 rounded-3xl shadow-md border border-slate-200 space-y-6">
-                        <div class="flex flex-wrap justify-between items-center gap-4 border-b border-slate-100 pb-4">
-                            <h3 class="font-black text-slate-900 text-xl">查詢比對結果 (共找到 <span class="text-blue-600">{{ crossResults.length }}</span> 筆相關資料)</h3>
-                            <div class="bg-blue-50 border-2 border-blue-200 text-blue-900 px-6 py-3 rounded-2xl text-lg font-bold shadow-xs">
-                                累計總工時: <span class="text-xl font-black text-blue-700">{{ crossTotalManHours }}</span> 小時 (h)
-                            </div>
-                        </div>
-
-                        <div class="space-y-4">
-                            <div v-for="(item, idx) in crossResults" :key="idx" class="p-6 bg-slate-50 hover:bg-blue-50/50 border-2 border-slate-200 hover:border-blue-400 rounded-2xl transition space-y-3">
-                                <div class="flex flex-wrap justify-between items-center gap-2 text-base font-bold text-slate-500">
-                                    <span>客戶: <strong class="text-slate-900 text-lg">{{ item.Customer || '-' }}</strong></span>
-                                    <span class="bg-emerald-100 text-emerald-800 px-4 py-1.5 rounded-full text-base font-black">單項工時: {{ item['Man hours(h)'] || 0 }} h</span>
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 text-base">
-                                    <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
-                                        <span class="block text-xs font-bold text-slate-400 uppercase tracking-wider">產品品號 (Part No)</span>
-                                        <strong class="text-blue-700 font-mono text-lg font-black">{{ item['Part No'] || '-' }}</strong>
-                                    </div>
-                                    <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
-                                        <span class="block text-xs font-bold text-slate-400 uppercase tracking-wider">產品貨號 (Goods Code)</span>
-                                        <strong class="text-slate-800 font-mono text-lg font-black">{{ item['Goods Code'] || '-' }}</strong>
-                                    </div>
-                                    <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
-                                        <span class="block text-xs font-bold text-slate-400 uppercase tracking-wider">客戶品號或規格 (Cust Part No)</span>
-                                        <strong class="text-slate-800 font-mono text-lg font-black">{{ item['Cust Part No'] || '-' }}</strong>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div v-if="crossResults.length === 0" class="py-16 text-center text-slate-400 font-bold text-xl">
-                                請於上方任一欄位輸入至少 3 個字元以開始檢索
+                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">3. Cust Part No (客戶品號或規格)</label>
+                                <input type="text" v-model="crossQuery.custPartNo" @input="onCrossInput('custPartNo')" placeholder="例如: 002" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none">
                             </div>
                         </div>
                     </div>
@@ -395,7 +351,7 @@
                     } catch (err) {
                         console.error("Firebase 寫入失敗:", err);
                         isOnline.value = false;
-                        alert("警告：資料寫入 Firebase 失敗聯絡系統管理員！\n錯誤原因: " + err.message);
+                        alert("警告：資料寫入 Firebase 失敗！\n錯誤原因: " + err.message);
                     }
                 };
 
@@ -482,7 +438,6 @@
                     });
                 };
 
-                // 品號查詢系統：聯動帶出與過濾
                 const onCrossInput = (changedField) => {
                     if (!Array.isArray(allData.value) || allData.value.length === 0) return;
                     
@@ -490,7 +445,6 @@
                     const g = crossQuery.value.goodsCode.trim();
                     const c = crossQuery.value.custPartNo.trim();
 
-                    // 當某一欄位輸入達 3 碼以上時，尋找第一筆匹配的資料，自動連動填入其他兩個欄位
                     if (changedField === 'partNo' && p.length >= 3) {
                         const found = allData.value.find(item => String(item['Part No'] || '').toLowerCase().includes(p.toLowerCase()));
                         if (found) {
@@ -511,36 +465,6 @@
                         }
                     }
                 };
-
-                const crossResults = computed(() => {
-                    if (!Array.isArray(allData.value)) return [];
-                    const p = crossQuery.value.partNo.trim().toLowerCase();
-                    const g = crossQuery.value.goodsCode.trim().toLowerCase();
-                    const c = crossQuery.value.custPartNo.trim().toLowerCase();
-
-                    // 必須至少有一個欄位輸入達 3 碼以上才顯示結果
-                    if ((p.length < 3) && (g.length < 3) && (c.length < 3)) return [];
-
-                    return allData.value.filter(item => {
-                        if (!item) return false;
-                        const partVal = String(item['Part No'] || '').toLowerCase();
-                        const goodsVal = String(item['Goods Code'] || '').toLowerCase();
-                        const custVal = String(item['Cust Part No'] || '').toLowerCase();
-
-                        const matchPart = !p || partVal.includes(p);
-                        const matchGoods = !g || goodsVal.includes(g);
-                        const matchCust = !c || custVal.includes(c);
-                        return matchPart && matchGoods && matchCust;
-                    });
-                });
-
-                const crossTotalManHours = computed(() => {
-                    return crossResults.value.reduce((sum, item) => {
-                        const rawVal = item['Man hours(h)'];
-                        const val = parseFloat(rawVal ? rawVal : 0);
-                        return sum + (isNaN(val) ? 0 : val);
-                    }, 0).toFixed(2);
-                });
 
                 const resetCrossQuery = () => {
                     crossQuery.value = { partNo: '', goodsCode: '', custPartNo: '' };
@@ -585,7 +509,7 @@
                 return {
                     isAuthenticated, loginEmail, loginPassword, loginError, isLoggingIn,
                     handleLogin, handleLogout, isOnline, lastSavedTime, isLoadingData,
-                    activeTab, crossQuery, laborQuery, crossResults, crossTotalManHours, laborResults, totalManHours,
+                    activeTab, crossQuery, laborQuery, laborResults, totalManHours,
                     onCrossInput, resetCrossQuery, resetLaborQuery, seedDefaultData, importJsonFiles, importExcel, exportExcel, exportPNG
                 };
             }
