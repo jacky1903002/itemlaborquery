@@ -127,12 +127,12 @@
                     <div class="flex items-center gap-4 text-slate-600 text-lg font-bold"><i class="fa-solid fa-spinner animate-spin text-2xl text-blue-600"></i><span>正在從 Firebase 載入企業資料庫...</span></div>
                 </div>
 
-                <!-- 畫面一：品號查詢系統 (單行 3 欄並排，至少 5 字元自動連動) -->
+                <!-- 畫面一：品號查詢系統 (支援 5 字符以上多筆符合結果顯示) -->
                 <div v-else-if="activeTab === 'cross'" class="space-y-6">
                     <div class="bg-white p-6 sm:p-7 rounded-2xl shadow-sm border border-slate-200 space-y-6">
                         <div class="flex flex-wrap justify-between items-center gap-4 border-b border-slate-100 pb-3">
                             <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
-                                <i class="fa-solid fa-magnifying-glass text-blue-600 text-xl"></i>品號關聯查詢系統 <span class="text-xs font-normal text-slate-500">(任一欄位輸入至少 5 個字元自動連動)</span>
+                                <i class="fa-solid fa-magnifying-glass text-blue-600 text-xl"></i>品號關聯查詢系統 <span class="text-xs font-normal text-slate-500">(任一欄位輸入至少 5 個字元，自動列出所有符合的多筆結果)</span>
                             </h2>
                             <button @click="resetCrossQuery" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-xl transition">清除重置</button>
                         </div>
@@ -141,17 +141,41 @@
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">1. Part No (產品品號)</label>
-                                <input type="text" v-model="crossQuery.partNo" @input="onCrossInput('partNo')" placeholder="例如: 19100" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none">
+                                <input type="text" v-model="crossQuery.partNo" placeholder="例如: 19100" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none">
                             </div>
 
                             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">2. Goods Code (產品貨號)</label>
-                                <input type="text" v-model="crossQuery.goodsCode" @input="onCrossInput('goodsCode')" placeholder="例如: FAMT-" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none">
+                                <input type="text" v-model="crossQuery.goodsCode" placeholder="例如: FAMT-" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none">
                             </div>
 
                             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">3. Cust Part No (客戶品號或規格)</label>
-                                <input type="text" v-model="crossQuery.custPartNo" @input="onCrossInput('custPartNo')" placeholder="例如: 0023-" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none">
+                                <input type="text" v-model="crossQuery.custPartNo" placeholder="例如: 0023-" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 品號查詢結果清單區塊 (當任一欄位輸入達 5 字符以上時顯示) -->
+                    <div v-if="crossResults.length > 0" class="bg-white p-6 sm:p-7 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                        <div class="flex flex-wrap justify-between items-center gap-4 border-b border-slate-100 pb-3">
+                            <h3 class="font-extrabold text-slate-900 text-base">符合條件的多筆查詢結果 (共找到 <span class="text-blue-600">{{ crossResults.length }}</span> 筆)</h3>
+                        </div>
+
+                        <div class="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                            <div v-for="(item, idx) in crossResults" :key="idx" class="p-4 bg-slate-50 hover:bg-blue-50/50 border border-slate-200 rounded-xl transition grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                                <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+                                    <span class="block text-[10px] font-bold text-slate-400 uppercase">產品品號 (Part No)</span>
+                                    <strong class="text-blue-700 font-mono text-sm font-bold">{{ item['Part No'] || '-' }}</strong>
+                                </div>
+                                <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+                                    <span class="block text-[10px] font-bold text-slate-400 uppercase">產品貨號 (Goods Code)</span>
+                                    <strong class="text-slate-800 font-mono text-sm font-bold">{{ item['Goods Code'] || '-' }}</strong>
+                                </div>
+                                <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+                                    <span class="block text-[10px] font-bold text-slate-400 uppercase">客戶品號或規格 (Cust Part No)</span>
+                                    <strong class="text-slate-800 font-mono text-sm font-bold">{{ item['Cust Part No'] || '-' }}</strong>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -484,34 +508,29 @@
                     });
                 };
 
-                const onCrossInput = (changedField) => {
-                    if (!Array.isArray(allData.value) || allData.value.length === 0) return;
-                    
-                    const p = crossQuery.value.partNo.trim();
-                    const g = crossQuery.value.goodsCode.trim();
-                    const c = crossQuery.value.custPartNo.trim();
+                // 品號查詢系統：輸入達 5 個字元時，列出所有符合的多筆結果
+                const crossResults = computed(() => {
+                    if (!Array.isArray(allData.value) || allData.value.length === 0) return [];
+                    const p = crossQuery.value.partNo.trim().toLowerCase();
+                    const g = crossQuery.value.goodsCode.trim().toLowerCase();
+                    const c = crossQuery.value.custPartNo.trim().toLowerCase();
 
-                    // 修改為輸入至少 5 個字元才進行自動連動
-                    if (changedField === 'partNo' && p.length >= 5) {
-                        const found = allData.value.find(item => String(item['Part No'] || '').toLowerCase().includes(p.toLowerCase()));
-                        if (found) {
-                            if (!g) crossQuery.value.goodsCode = found['Goods Code'] || '';
-                            if (!c) crossQuery.value.custPartNo = found['Cust Part No'] || '';
-                        }
-                    } else if (changedField === 'goodsCode' && g.length >= 5) {
-                        const found = allData.value.find(item => String(item['Goods Code'] || '').toLowerCase().includes(g.toLowerCase()));
-                        if (found) {
-                            if (!p) crossQuery.value.partNo = found['Part No'] || '';
-                            if (!c) crossQuery.value.custPartNo = found['Cust Part No'] || '';
-                        }
-                    } else if (changedField === 'custPartNo' && c.length >= 5) {
-                        const found = allData.value.find(item => String(item['Cust Part No'] || '').toLowerCase().includes(c.toLowerCase()));
-                        if (found) {
-                            if (!p) crossQuery.value.partNo = found['Part No'] || '';
-                            if (!g) crossQuery.value.goodsCode = found['Goods Code'] || '';
-                        }
-                    }
-                };
+                    // 任一欄位達 5 個字元才開始過濾顯示多筆結果
+                    const hasValidInput = (p.length >= 5) || (g.length >= 5) || (c.length >= 5);
+                    if (!hasValidInput) return [];
+
+                    return allData.value.filter(item => {
+                        if (!item) return false;
+                        const partVal = String(item['Part No'] || '').toLowerCase();
+                        const goodsVal = String(item['Goods Code'] || '').toLowerCase();
+                        const custVal = String(item['Cust Part No'] || '').toLowerCase();
+
+                        const matchPart = !p || partVal.includes(p);
+                        const matchGoods = !g || goodsVal.includes(g);
+                        const matchCust = !c || custVal.includes(c);
+                        return matchPart && matchGoods && matchCust;
+                    });
+                });
 
                 const resetCrossQuery = () => {
                     crossQuery.value = { partNo: '', goodsCode: '', custPartNo: '' };
@@ -571,8 +590,8 @@
                 return {
                     isAuthenticated, loginEmail, loginPassword, loginError, isLoggingIn,
                     handleLogin, handleLogout, isOnline, lastSavedTime, isLoadingData,
-                    activeTab, crossQuery, laborQuery, laborResults, totalManHours, lineNameSummary,
-                    onCrossInput, resetCrossQuery, resetLaborQuery, seedDefaultData, importJsonFiles, importExcel, exportExcel, exportPNG,
+                    activeTab, crossQuery, laborQuery, crossResults, laborResults, totalManHours, lineNameSummary,
+                    resetCrossQuery, resetLaborQuery, seedDefaultData, importJsonFiles, importExcel, exportExcel, exportPNG,
                     exportLaborExcel, exportLaborPNG
                 };
             }
