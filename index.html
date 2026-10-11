@@ -415,7 +415,6 @@
                     const files = e.target.files;
                     if (!files || files.length === 0) return;
 
-                    // 檢查是否超過每次最多 10 筆的限制
                     if (files.length > 10) {
                         alert("每次最多只能同時匯入 10 個 JSON 檔案，請重新選擇！");
                         e.target.value = '';
@@ -426,7 +425,6 @@
 
                     for (let i = 0; i < files.length; i++) {
                         const file = files[i];
-                        // 檢查副檔名是否為 .json (不分大小寫)
                         if (!file.name.toLowerCase().endsWith('.json')) {
                             continue;
                         }
@@ -454,6 +452,7 @@
                     e.target.value = '';
                 };
 
+                // Excel 匯入（已加入合併儲存格向下填滿處理）
                 const importExcel = async (e) => {
                     const files = e.target.files;
                     if (!files || files.length === 0) return;
@@ -463,11 +462,29 @@
                         try {
                             const data = new Uint8Array(event.target.result);
                             const workbook = XLSX.read(data, { type: 'array' });
-                            const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                            const sheetName = workbook.SheetNames[0];
+                            const worksheet = workbook.Sheets[sheetName];
+                            
+                            const json = XLSX.utils.sheet_to_json(worksheet);
+                            
                             if (json && json.length > 0) {
-                                allData.value = json;
-                                await saveToFirebase(json);
-                                alert(`成功匯入 ${json.length} 筆資料並同步至 Firebase！`);
+                                const keys = Object.keys(json[0]);
+                                let lastValues = {};
+
+                                const filledJson = json.map(row => {
+                                    keys.forEach(key => {
+                                        if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== "") {
+                                            lastValues[key] = row[key];
+                                        } else if (lastValues[key] !== undefined) {
+                                            row[key] = lastValues[key];
+                                        }
+                                    });
+                                    return row;
+                                });
+
+                                allData.value = filledJson;
+                                await saveToFirebase(filledJson);
+                                alert(`成功匯入 ${filledJson.length} 筆資料（已自動填滿合併儲存格）並同步至 Firebase！`);
                             }
                         } catch (err) {
                             alert("檔案解析失敗: " + err.message);
@@ -519,7 +536,6 @@
                     });
                 };
 
-                // 品號查詢系統：支援 5 字符以上檢索，並自動去除重複項目（若 Part No, Goods Code, Cust Part No 完全相同則只列一筆）
                 const crossResults = computed(() => {
                     if (!Array.isArray(allData.value) || allData.value.length === 0) return [];
                     const p = crossQuery.value.partNo.trim().toLowerCase();
@@ -541,7 +557,6 @@
                         return matchPart && matchGoods && matchCust;
                     });
 
-                    // 自動去重 (根據 Part No + Goods Code + Cust Part No 組合唯一性)
                     const uniqueMap = new Map();
                     filtered.forEach(item => {
                         const key = `${String(item['Part No'] || '').trim()}|${String(item['Goods Code'] || '').trim()}|${String(item['Cust Part No'] || '').trim()}`;
