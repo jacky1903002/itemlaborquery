@@ -127,12 +127,12 @@
                     <div class="flex items-center gap-4 text-slate-600 text-lg font-bold"><i class="fa-solid fa-spinner animate-spin text-2xl text-blue-600"></i><span>正在從 Firebase 載入企業資料庫...</span></div>
                 </div>
 
-                <!-- 畫面一：品號查詢系統 -->
+                <!-- 畫面一：品號查詢系統 (單行 3 欄並排，至少 5 字元自動連動) -->
                 <div v-else-if="activeTab === 'cross'" class="space-y-6">
                     <div class="bg-white p-6 sm:p-7 rounded-2xl shadow-sm border border-slate-200 space-y-6">
                         <div class="flex flex-wrap justify-between items-center gap-4 border-b border-slate-100 pb-3">
                             <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
-                                <i class="fa-solid fa-magnifying-glass text-blue-600 text-xl"></i>品號關聯查詢系統 <span class="text-xs font-normal text-slate-500">(任一欄位輸入至少 3 個字元自動連動)</span>
+                                <i class="fa-solid fa-magnifying-glass text-blue-600 text-xl"></i>品號關聯查詢系統 <span class="text-xs font-normal text-slate-500">(任一欄位輸入至少 5 個字元自動連動)</span>
                             </h2>
                             <button @click="resetCrossQuery" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-xl transition">清除重置</button>
                         </div>
@@ -141,17 +141,17 @@
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">1. Part No (產品品號)</label>
-                                <input type="text" v-model="crossQuery.partNo" @input="onCrossInput('partNo')" placeholder="例如: 191" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none">
+                                <input type="text" v-model="crossQuery.partNo" @input="onCrossInput('partNo')" placeholder="例如: 19100" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none">
                             </div>
 
                             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">2. Goods Code (產品貨號)</label>
-                                <input type="text" v-model="crossQuery.goodsCode" @input="onCrossInput('goodsCode')" placeholder="例如: FAM" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none">
+                                <input type="text" v-model="crossQuery.goodsCode" @input="onCrossInput('goodsCode')" placeholder="例如: FAMT-" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none">
                             </div>
 
                             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">3. Cust Part No (客戶品號或規格)</label>
-                                <input type="text" v-model="crossQuery.custPartNo" @input="onCrossInput('custPartNo')" placeholder="例如: 002" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none">
+                                <input type="text" v-model="crossQuery.custPartNo" @input="onCrossInput('custPartNo')" placeholder="例如: 0023-" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none">
                             </div>
                         </div>
                     </div>
@@ -491,19 +491,20 @@
                     const g = crossQuery.value.goodsCode.trim();
                     const c = crossQuery.value.custPartNo.trim();
 
-                    if (changedField === 'partNo' && p.length >= 3) {
+                    // 修改為輸入至少 5 個字元才進行自動連動
+                    if (changedField === 'partNo' && p.length >= 5) {
                         const found = allData.value.find(item => String(item['Part No'] || '').toLowerCase().includes(p.toLowerCase()));
                         if (found) {
                             if (!g) crossQuery.value.goodsCode = found['Goods Code'] || '';
                             if (!c) crossQuery.value.custPartNo = found['Cust Part No'] || '';
                         }
-                    } else if (changedField === 'goodsCode' && g.length >= 3) {
+                    } else if (changedField === 'goodsCode' && g.length >= 5) {
                         const found = allData.value.find(item => String(item['Goods Code'] || '').toLowerCase().includes(g.toLowerCase()));
                         if (found) {
                             if (!p) crossQuery.value.partNo = found['Part No'] || '';
                             if (!c) crossQuery.value.custPartNo = found['Cust Part No'] || '';
                         }
-                    } else if (changedField === 'custPartNo' && c.length >= 3) {
+                    } else if (changedField === 'custPartNo' && c.length >= 5) {
                         const found = allData.value.find(item => String(item['Cust Part No'] || '').toLowerCase().includes(c.toLowerCase()));
                         if (found) {
                             if (!p) crossQuery.value.partNo = found['Part No'] || '';
@@ -548,7 +549,6 @@
                     }, 0).toFixed(2);
                 });
 
-                // 計算 Line Name (製程名稱) 的累計工時統計結果
                 const lineNameSummary = computed(() => {
                     if (!laborResults.value || laborResults.value.length === 0) return [];
                     const map = {};
