@@ -284,7 +284,6 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        // 強制明確指定資料庫 URL 執行個體
         const db = getDatabase(app, "https://itemlaborquery-default-rtdb.firebaseio.com");
 
         const { createApp, ref: vueRef, computed } = Vue;
@@ -353,7 +352,7 @@
                         isOnline.value = true;
                     }, (error) => {
                         console.error("Firebase 讀取錯誤:", error);
-                        isOnline.value = false;
+                        isOnline.value, (isOnline.value = false);
                         isLoadingData.value = false;
                     });
 
@@ -365,28 +364,33 @@
                     });
                 };
 
-                // 已修改：加入寫入失敗警示對話框，方便除錯
-                const saveToFirebase = (dataToSave) => {
-                    const dbRef = ref(db, 'itemsData');
-                    const metaRef = ref(db, 'meta');
-                    const nowStr = new Date().toLocaleString('zh-TW', { hour12: false });
+                // 修正：使用 Promise 確保 Firebase `set` 完成，並將資料進行純 JSON 序列化避免 Vue Proxy 造成寫入失敗
+                const saveToFirebase = async (dataToSave) => {
+                    try {
+                        const dbRef = ref(db, 'itemsData');
+                        const metaRef = ref(db, 'meta');
+                        const nowStr = new Date().toLocaleString('zh-TW', { hour12: false });
 
-                    set(dbRef, dataToSave).then(() => {
-                        set(metaRef, { lastSaved: nowStr });
+                        // 將資料轉為純 JS 物件（避免 Vue 響應式 Proxy 導致 Firebase 寫入異常）
+                        const cleanData = JSON.parse(JSON.stringify(dataToSave));
+
+                        await set(dbRef, cleanData);
+                        await set(metaRef, { lastSaved: nowStr });
+
                         lastSavedTime.value = nowStr;
                         isOnline.value = true;
                         console.log("資料已成功寫入 Firebase 即時資料庫！");
-                    }).catch((err) => {
+                    } catch (err) {
                         console.error("Firebase 寫入失敗:", err);
                         isOnline.value = false;
-                        alert("警告：資料寫入 Firebase 失敗！\n錯誤原因: " + err.message + "\n\n請檢查您的 Firebase Realtime Database Security Rules 權限設定是否允許寫入。");
-                    });
+                        alert("警告：資料寫入 Firebase 失敗！\n錯誤原因: " + err.message + "\n\n請檢查您的 Firebase Realtime Database Rules 權限設定是否允許寫入。");
+                    }
                 };
 
-                const seedDefaultData = () => {
+                const seedDefaultData = async () => {
                     if (confirm("確定要將資料庫載入預設範本資料嗎？")) {
-                        saveToFirebase(sampleSeedData);
-                        alert("已成功發送範本資料至雲端同步！");
+                        await saveToFirebase(sampleSeedData);
+                        alert("已成功寫入範本資料並同步至雲端！");
                     }
                 };
 
@@ -414,28 +418,28 @@
 
                     if (combinedData.length > 0) {
                         allData.value = combinedData;
-                        saveToFirebase(combinedData);
-                        alert(`成功匯入 ${files.length} 個 JSON 檔案，共計 ${combinedData.length} 筆資料並嘗試同步至 Firebase！`);
+                        await saveToFirebase(combinedData);
+                        alert(`成功匯入 ${files.length} 個 JSON 檔案，共計 ${combinedData.length} 筆資料，並同步至 Firebase！`);
                     } else {
                         alert("所選的 JSON 檔案皆無有效資料或格式不符。");
                     }
                     e.target.value = '';
                 };
 
-                const importExcel = (e) => {
+                const importExcel = async (e) => {
                     const files = e.target.files;
                     if (!files || files.length === 0) return;
                     const file = files[0];
                     const reader = new FileReader();
-                    reader.onload = (event) => {
+                    reader.onload = async (event) => {
                         try {
                             const data = new Uint8Array(event.target.result);
                             const workbook = XLSX.read(data, { type: 'array' });
                             const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
                             if (json && json.length > 0) {
                                 allData.value = json;
-                                saveToFirebase(json);
-                                alert(`成功匯入 ${json.length} 筆資料並嘗試同步至 Firebase！`);
+                                await saveToFirebase(json);
+                                alert(`成功匯入 ${json.length} 筆資料並同步至 Firebase！`);
                             }
                         } catch (err) {
                             alert("檔案解析失敗: " + err.message);
