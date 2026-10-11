@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工時與品號檢索系統 - Firebase 即時資料庫 (多JSON來源)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- SheetJS (Excel 匯入/匯出) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- html2canvas (一鍵 PNG 匯出) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <div id="app" class="flex flex-col min-h-screen">
+
+        <!-- 1. 登入畫面 (未登入時顯示) -->
+        <div v-if="!isAuthenticated" class="flex-grow flex items-center justify-center p-4 bg-gradient-to-br from-blue-900 to-slate-900">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 border border-slate-100">
+                <div class="text-center mb-8">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 text-blue-600 rounded-full mb-4 text-2xl shadow-inner">
+                        <i class="fa-solid fa-industry"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-slate-900">工時與品號檢索系統</h1>
+                    <p class="text-sm text-slate-500 mt-1">請登入您的 Firebase 帳號以存取即時資料庫</p>
+                </div>
+
+                <form @submit.prevent="handleLogin" class="space-y-5">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">Firebase 電子郵件</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-envelope"></i></span>
+                            <input type="email" v-model="loginEmail" required class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="name@example.com">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">密碼</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-lock"></i></span>
+                            <input type="password" v-model="loginPassword" required class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="••••••••">
+                        </div>
+                    </div>
+
+                    <div v-if="loginError" class="p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-lg flex items-center gap-2">
+                        <i class="fa-solid fa-circle-exclamation"></i><span>{{ loginError }}</span>
+                    </div>
+
+                    <button type="submit" :disabled="isLoggingIn" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md transition duration-200 flex items-center justify-center gap-2 text-sm">
+                        <i v-if="isLoggingIn" class="fa-solid fa-spinner animate-spin"></i>
+                        <span>{{ isLoggingIn ? '登入中...' : '登入系統' }}</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 2. 主系統畫面 (登入後顯示) -->
+        <div v-else class="flex flex-col flex-grow">
+            <!-- 頂端導覽列 -->
+            <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+                <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-blue-600 text-white p-2.5 rounded-xl shadow-sm">
+                            <i class="fa-solid fa-database text-lg"></i>
+                        </div>
+                        <div>
+                            <h1 class="font-bold text-slate-900 leading-tight">工時與品號檢索系統</h1>
+                            <div class="flex items-center gap-2 mt-0.5 text-xs">
+                                <span class="flex items-center gap-1.5" :class="isOnline ? 'text-emerald-600' : 'text-amber-600'">
+                                    <span class="w-2 h-2 rounded-full" :class="isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'"></span>
+                                    {{ isOnline ? '已連線 (Realtime DB)' : '連線中斷 / 離線' }}
+                                </span>
+                                <span class="text-slate-300">|</span>
+                                <span class="text-slate-500"><i class="fa-regular fa-clock mr-1"></i>最後儲存: {{ lastSavedTime || '尚未儲存' }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 功能按鈕區 -->
+                    <div class="flex flex-wrap items-center gap-2">
+                        <!-- 多 JSON 檔案上傳 (labor01.json ~ labor10.json) -->
+                        <label class="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-medium rounded-lg cursor-pointer transition flex items-center gap-1.5" title="可一次選取多個 labor01.json ~ labor10.json 檔案">
+                            <i class="fa-solid fa-file-code"></i><span>匯入 JSON (labor01~10)</span>
+                            <input type="file" @change="importJsonFiles" accept=".json" multiple class="hidden">
+                        </label>
+                        <label class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg cursor-pointer transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-excel text-emerald-600"></i><span>匯入 Excel</span>
+                            <input type="file" @change="importExcel" accept=".xlsx, .xls, .csv" class="hidden">
+                        </label>
+                        <button @click="exportExcel" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-arrow-down text-emerald-600"></i><span>匯出 Excel</span>
+                        </button>
+                        <button @click="exportPNG" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-camera text-indigo-600"></i><span>一鍵匯出 PNG</span>
+                        </button>
+                        <button @click="seedDefaultData" title="載入預設範本資料" class="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-medium rounded-lg transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-rotate"></i><span>載入範本</span>
+                        </button>
+                        <button @click="handleLogout" class="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium rounded-lg transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-arrow-right-from-bracket"></i><span>登出</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 檢索工作表切換 Tab -->
+                <div class="max-w-7xl mx-auto px-4 flex gap-6 border-t border-slate-100">
+                    <button @click="activeTab = 'cross'" :class="activeTab === 'cross' ? 'border-blue-600 text-blue-600 font-semibold' : 'border-transparent text-slate-500 hover:text-slate-800'" class="py-3 border-b-2 text-sm transition flex items-center gap-2">
+                        <i class="fa-solid fa-shuffle"></i><span>1. 品號交叉查詢</span>
+                    </button>
+                    <button @click="activeTab = 'labor'" :class="activeTab === 'labor' ? 'border-blue-600 text-blue-600 font-semibold' : 'border-transparent text-slate-500 hover:text-slate-800'" class="py-3 border-b-2 text-sm transition flex items-center gap-2">
+                        <i class="fa-solid fa-stopwatch"></i><span>2. 工時查詢系統</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- 內容主體區 (可截圖區塊) -->
+            <main id="capture-area" class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+
+                <!-- 載入中狀態 -->
+                <div v-if="isLoadingData" class="flex justify-center items-center py-20">
+                    <div class="flex items-center gap-3 text-slate-500"><i class="fa-solid fa-spinner animate-spin text-xl text-blue-600"></i><span>正在從 Firebase 載入資料庫...</span></div>
+                </div>
+
+                <!-- 畫面一：品號交叉查詢 -->
+                <div v-else-if="activeTab === 'cross'" class="space-y-6">
+                    <div class="bg-white p-5 rounded-xl shadow-xs border border-slate-200">
+                        <h2 class="text-base font-bold text-slate-800 mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-magnifying-glass text-blue-600"></i>品號交叉查詢條件
+                        </h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Part No. (內部品號)</label>
+                                <input type="text" v-model="crossQuery.partNo" placeholder="輸入或選擇 Part No." class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Goods Code (物料編碼)</label>
+                                <input type="text" v-model="crossQuery.goodsCode" placeholder="輸入或選擇 Goods Code" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Cust. Part No. (客戶品號)</label>
+                                <input type="text" v-model="crossQuery.custPartNo" placeholder="輸入或選擇 Cust. Part No." class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            </div>
+                        </div>
+                        <div class="mt-4 flex justify-end gap-2">
+                            <button @click="resetCrossQuery" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-medium rounded-lg transition">清除重置</button>
+                        </div>
+                    </div>
+
+                    <!-- 交叉查詢結果表格 -->
+                    <div class="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
+                        <div class="px-5 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                            <h3 class="font-bold text-slate-800 text-sm">交叉對應結果 (共 {{ crossResults.length }} 筆)</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-sm">
+                                <thead>
+                                    <tr class="bg-slate-100/70 text-slate-600 text-xs uppercase tracking-wider border-b border-slate-200">
+                                        <th class="py-3 px-4">Customer (客戶)</th>
+                                        <th class="py-3 px-4">Part No.</th>
+                                        <th class="py-3 px-4">Goods Code</th>
+                                        <th class="py-3 px-4">Cust. Part No.</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-200">
+                                    <tr v-for="(item, idx) in crossResults" :key="idx" class="hover:bg-blue-50/50 transition">
+                                        <td class="py-3 px-4 font-medium text-slate-900">{{ item.Customer || '-' }}</td>
+                                        <td class="py-3 px-4 text-blue-600 font-mono">{{ item['Part No.'] || '-' }}</td>
+                                        <td class="py-3 px-4 text-slate-700 font-mono">{{ item['Goods Code'] || '-' }}</td>
+                                        <td class="py-3 px-4 text-slate-700 font-mono">{{ item['Cust. Part No.'] || '-' }}</td>
+                                    </tr>
+                                    <tr v-if="crossResults.length === 0">
+                                        <td colspan="4" class="py-8 text-center text-slate-400">目前資料庫無內容或查無符合條件的交叉對應資料</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 畫面二：工時查詢系統 -->
+                <div v-else-if="activeTab === 'labor'" class="space-y-6">
+                    <div class="bg-white p-5 rounded-xl shadow-xs border border-slate-200">
+                        <h2 class="text-base font-bold text-slate-800 mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-stopwatch text-blue-600"></i>工時查詢系統條件 (支援任一欄位檢索)
+                        </h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Customer (客戶)</label>
+                                <input type="text" v-model="laborQuery.customer" placeholder="例如: AMAT" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Part No.</label>
+                                <input type="text" v-model="laborQuery.partNo" placeholder="輸入 Part No." class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Goods Code</label>
+                                <input type="text" v-model="laborQuery.goodsCode" placeholder="輸入 Goods Code" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Cust. Part No.</label>
+                                <input type="text" v-model="laborQuery.custPartNo" placeholder="輸入 Cust. Part No." class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            </div>
+                        </div>
+                        <div class="mt-4 flex justify-end gap-2">
+                            <button @click="resetLaborQuery" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-medium rounded-lg transition">清除重置</button>
+                        </div>
+                    </div>
+
+                    <!-- 工時完整表格結果 -->
+                    <div class="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
+                        <div class="px-5 py-4 border-b border-slate-200 flex flex-wrap justify-between items-center gap-4 bg-slate-50">
+                            <h3 class="font-bold text-slate-800 text-sm">工時完整明細表 (共找到 {{ laborResults.length }} 筆相關製程)</h3>
+                            <div class="bg-blue-50 border border-blue-200 text-blue-700 px-3 py-1.5 rounded-lg text-xs font-semibold">
+                                總工時加總: <span class="text-sm font-bold">{{ totalManHours }}</span> 小時 (h)
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-sm">
+                                <thead>
+                                    <tr class="bg-slate-100/70 text-slate-600 text-xs uppercase tracking-wider border-b border-slate-200">
+                                        <th class="py-3 px-4">Customer</th>
+                                        <th class="py-3 px-4">Part No.</th>
+                                        <th class="py-3 px-4">Goods Code</th>
+                                        <th class="py-3 px-4">Cust. Part No.</th>
+                                        <th class="py-3 px-4 text-center">Line Code</th>
+                                        <th class="py-3 px-4">Line Name (製程名稱)</th>
+                                        <th class="py-3 px-4 text-right">Man-hours(h)</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-200">
+                                    <tr v-for="(item, idx) in laborResults" :key="idx" class="hover:bg-blue-50/50 transition">
+                                        <td class="py-3 px-4 font-medium text-slate-900">{{ item.Customer || '-' }}</td>
+                                        <td class="py-3 px-4 text-blue-600 font-mono">{{ item['Part No.'] || '-' }}</td>
+                                        <td class="py-3 px-4 text-slate-700 font-mono">{{ item['Goods Code'] || '-' }}</td>
+                                        <td class="py-3 px-4 text-slate-700 font-mono">{{ item['Cust. Part No.'] || '-' }}</td>
+                                        <td class="py-3 px-4 text-center font-semibold text-slate-600">{{ item['Line Code'] || '-' }}</td>
+                                        <td class="py-3 px-4 font-medium text-slate-800">{{ item['Line Name'] || '-' }}</td>
+                                        <td class="py-3 px-4 text-right font-mono font-bold text-emerald-600">{{ item['Man-hours(h)'] || 0 }}</td>
+                                    </tr>
+                                    <tr v-if="laborResults.length === 0">
+                                        <td colspan="7" class="py-8 text-center text-slate-400">目前資料庫無內容或查無符合條件的工時明細資料 (請上傳 labor01~10.json 或點擊載入範本)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+
+            <!-- 頁尾 -->
+            <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400">
+                Item Labor Query System &copy; 2026 - Powered by Firebase Realtime Database
+            </footer>
+        </div>
+
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // Firebase 專案設定
+        const firebaseConfig = {
+            apiKey: "AIzaSyDFnnqG1bzT-RwKzkBZNKIat2wqpzbuad0",
+            authDomain: "itemlaborquery.firebaseapp.com",
+            projectId: "itemlaborquery",
+            storageBucket: "itemlaborquery.firebasestorage.app",
+            messagingSenderId: "980383382208",
+            appId: "1:980383382208:web:0535c60bff860a85d9cb25",
+            measurementId: "G-YPDQQY9TGH"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+
+        const { createApp, ref: vueRef, computed } = Vue;
+
+        createApp({
+            setup() {
+                const isAuthenticated = vueRef(false);
+                const loginEmail = vueRef('');
+                const loginPassword = vueRef('');
+                const loginError = vueRef('');
+                const isLoggingIn = vueRef(false);
+                const isOnline = vueRef(true);
+                const lastSavedTime = vueRef('');
+                const isLoadingData = vueRef(true);
+                const activeTab = vueRef('labor');
+
+                const allData = vueRef([]);
+
+                // 預設範本資料
+                const sampleSeedData = [
+                    { Customer: "AMAT", "Part No.": "19100-AALE000", "Goods Code": "FAMT-871", "Cust. Part No.": "0023-60786", "Line Code": 1, "Line Name": "grinding", "Man-hours(h)": 4 },
+                    { Customer: "AMAT", "Part No.": "19100-AALE000", "Goods Code": "FAMT-871", "Cust. Part No.": "0023-60786", "Line Code": 2, "Line Name": "metal-A", "Man-hours(h)": 3 },
+                    { Customer: "AMAT", "Part No.": "19100-AALE000", "Goods Code": "FAMT-871", "Cust. Part No.": "0023-60786", "Line Code": 3, "Line Name": "metal-B", "Man-hours(h)": 2 },
+                    { Customer: "AMAT", "Part No.": "19100-AALE000", "Goods Code": "FAMT-871", "Cust. Part No.": "0023-60786", "Line Code": 4, "Line Name": "metal-C", "Man-hours(h)": 4 },
+                    { Customer: "AMAT", "Part No.": "19100-AALE000", "Goods Code": "FAMT-871", "Cust. Part No.": "0023-60786", "Line Code": 5, "Line Name": "clean", "Man-hours(h)": 2 },
+                    { Customer: "AMAT", "Part No.": "19100-AALE000", "Goods Code": "FAMT-871", "Cust. Part No.": "0023-60786", "Line Code": 6, "Line Name": "QC", "Man-hours(h)": 2 },
+                    { Customer: "AMAT", "Part No.": "19100-AALE000", "Goods Code": "FAMT-871", "Cust. Part No.": "0023-60786", "Line Code": 7, "Line Name": "package", "Man-hours(h)": 1 },
+                    { Customer: "AMAT", "Part No.": "19107-AALE000", "Goods Code": "FAMT-234", "Cust. Part No.": "0043-21179", "Line Code": 1, "Line Name": "grinding", "Man-hours(h)": 2 },
+                    { Customer: "AMAT", "Part No.": "19107-AALE000", "Goods Code": "FAMT-234", "Cust. Part No.": "0043-21179", "Line Code": 2, "Line Name": "metal-A", "Man-hours(h)": 1 },
+                    { Customer: "AMAT", "Part No.": "19107-AALE000", "Goods Code": "FAMT-234", "Cust. Part No.": "0043-21179", "Line Code": 3, "Line Name": "metal-B", "Man-hours(h)": 3 },
+                    { Customer: "AMAT", "Part No.": "19107-AALE000", "Goods Code": "FAMT-234", "Cust. Part No.": "0043-21179", "Line Code": 4, "Line Name": "metal-C", "Man-hours(h)": 2 },
+                    { Customer: "AMAT", "Part No.": "19107-AALE000", "Goods Code": "FAMT-234", "Cust. Part No.": "0043-21179", "Line Code": 5, "Line Name": "clean", "Man-hours(h)": 4 },
+                    { Customer: "AMAT", "Part No.": "19107-AALE000", "Goods Code": "FAMT-234", "Cust. Part No.": "0043-21179", "Line Code": 6, "Line Name": "QC", "Man-hours(h)": 2 },
+                    { Customer: "AMAT", "Part No.": "19107-AALE000", "Goods Code": "FAMT-234", "Cust. Part No.": "0043-21179", "Line Code": 7, "Line Name": "package", "Man-hours(h)": 2 }
+                ];
+
+                // 檢索條件
+                const crossQuery = vueRef({ partNo: '', goodsCode: '', custPartNo: '' });
+                const laborQuery = vueRef({ customer: '', partNo: '', goodsCode: '', custPartNo: '' });
+
+                // 監聽登入狀態
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        isAuthenticated.value = true;
+                        initFirebaseDataSync();
+                    } else {
+                        isAuthenticated.value = false;
+                        isLoadingData.value = false;
+                    }
+                });
+
+                // 登入處理
+                const handleLogin = async () => {
+                    isLoggingIn.value = true;
+                    loginError.value = '';
+                    try {
+                        await signInWithEmailAndPassword(auth, loginEmail.value, loginPassword.value);
+                    } catch (error) {
+                        loginError.value = "登入失敗: " + error.message;
+                    } finally {
+                        isLoggingIn.value = false;
+                    }
+                };
+
+                // 登出處理
+                const handleLogout = () => {
+                    signOut(auth);
+                };
+
+                // 同步 Realtime Database 資料
+                const initFirebaseDataSync = () => {
+                    isLoadingData.value = true;
+                    const dbRef = ref(db, 'itemsData');
+                    const metaRef = ref(db, 'meta');
+
+                    onValue(dbRef, (snapshot) => {
+                        const val = snapshot.val();
+                        if (val && Array.isArray(val)) {
+                            allData.value = val;
+                        } else {
+                            allData.value = [];
+                        }
+                        isLoadingData.value = false;
+                        isOnline.value = true;
+                    }, (error) => {
+                        console.error(error);
+                        isOnline.value = false;
+                        isLoadingData.value = false;
+                    });
+
+                    onValue(metaRef, (snapshot) => {
+                        const val = snapshot.val();
+                        if (val && val.lastSaved) {
+                            lastSavedTime.value = val.lastSaved;
+                        }
+                    });
+                };
+
+                // 儲存至 Firebase Realtime Database
+                const saveToFirebase = (dataToSave) => {
+                    const dbRef = ref(db, 'itemsData');
+                    const metaRef = ref(db, 'meta');
+                    const nowStr = new Date().toLocaleString('zh-TW', { hour12: false });
+
+                    set(dbRef, dataToSave).then(() => {
+                        set(metaRef, { lastSaved: nowStr });
+                        lastSavedTime.value = nowStr;
+                        isOnline.value = true;
+                    }).catch((err) => {
+                        console.error("儲存失敗", err);
+                        isOnline.value = false;
+                    });
+                };
+
+                // 載入預設範本
+                const seedDefaultData = () => {
+                    if (confirm("確定要將資料庫載入預設範本資料嗎？")) {
+                        saveToFirebase(sampleSeedData);
+                        alert("已成功載入範本資料！");
+                    }
+                };
+
+                // 支援一次選取多個 labor01.json ~ labor10.json 檔案進行合併與防呆
+                const importJsonFiles = async (e) => {
+                    const files = e.target.files;
+                    if (!files || files.length === 0) return;
+
+                    let combinedData = [];
+                    let readErrors = 0;
+
+                    for (let i = 0; i < files.length; i++) {
+                        const file = files[i];
+                        try {
+                            const text = await file.text();
+                            if (!text || text.trim() === "") {
+                                console.warn(`檔案 ${file.name} 內容為空`);
+                                continue;
+                            }
+                            const jsonData = JSON.parse(text);
+                            if (Array.isArray(jsonData)) {
+                                combinedData = combinedData.concat(jsonData);
+                            } else if (typeof jsonData === 'object' && jsonData !== null) {
+                                combinedData.push(jsonData);
+                            }
+                        } catch (err) {
+                            console.error(`解析 ${file.name} 失敗:`, err);
+                            readErrors++;
+                        }
+                    }
+
+                    if (combinedData.length > 0) {
+                        allData.value = combinedData;
+                        saveToFirebase(combinedData);
+                        alert(`成功匯入 ${files.length} 個 JSON 檔案，共計 ${combinedData.length} 筆資料，並同步至 Firebase！`);
+                    } else {
+                        alert("所選的 JSON 檔案皆無有效資料或格式不符，資料維持不變。");
+                    }
+                    e.target.value = '';
+                };
+
+                // Excel 匯入
+                const importExcel = (e) => {
+                    const files = e.target.files;
+                    if (!files || files.length === 0) return;
+                    const file = files[0];
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const data = new Uint8Array(event.target.result);
+                            const workbook = XLSX.read(data, { type: 'array' });
+                            const firstSheetName = workbook.SheetNames[0];
+                            const worksheet = workbook.Sheets[firstSheetName];
+                            const json = XLSX.utils.sheet_to_json(worksheet);
+                            
+                            if (json && json.length > 0) {
+                                allData.value = json;
+                                saveToFirebase(json);
+                                alert(`成功匯入 ${json.length} 筆資料並同步至 Firebase！`);
+                            } else {
+                                alert("匯入的檔案無有效資料。");
+                            }
+                        } catch (err) {
+                            alert("檔案解析失敗: " + err.message);
+                        }
+                    };
+                    reader.readAsArrayBuffer(file);
+                    e.target.value = '';
+                };
+
+                // Excel 匯出
+                const exportExcel = () => {
+                    if (!allData.value || allData.value.length === 0) {
+                        alert("目前資料庫無內容可供匯出。");
+                        return;
+                    }
+                    const worksheet = XLSX.utils.json_to_sheet(allData.value);
+                    const workbook = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(workbook, worksheet, "工時與品號總表");
+                    XLSX.writeFile(workbook, "Item_Labor_Export_" + new Date().toISOString().slice(0,10) + ".xlsx");
+                };
+
+                // 一鍵匯出 PNG
+                const exportPNG = () => {
+                    const captureElement = document.getElementById('capture-area');
+                    html2canvas(captureElement, { scale: 2 }).then(canvas => {
+                        const link = document.createElement('a');
+                        link.download = 'Query_Result_' + new Date().toISOString().slice(0,10) + '.png';
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+                    });
+                };
+
+                // 品號交叉查詢過濾 (具備空資料防呆)
+                const crossResults = computed(() => {
+                    if (!Array.isArray(allData.value)) return [];
+                    return allData.value.filter(item => {
+                        if (!item) return false;
+                        const matchPart = !crossQuery.value.partNo || String(item['Part No.'] || '').toLowerCase().includes(crossQuery.value.partNo.toLowerCase());
+                        const matchGoods = !crossQuery.value.goodsCode || String(item['Goods Code'] || '').toLowerCase().includes(crossQuery.value.goodsCode.toLowerCase());
+                        const matchCust = !crossQuery.value.custPartNo || String(item['Cust. Part No.'] || '').toLowerCase().includes(crossQuery.value.custPartNo.toLowerCase());
+                        return matchPart && matchGoods && matchCust;
+                    });
+                });
+
+                const resetCrossQuery = () => {
+                    crossQuery.value = { partNo: '', goodsCode: '', custPartNo: '' };
+                };
+
+                // 工時查詢系統過濾 (具備空資料防呆)
+                const laborResults = computed(() => {
+                    if (!Array.isArray(allData.value)) return [];
+                    return allData.value.filter(item => {
+                        if (!item) return false;
+                        const matchCustName = !laborQuery.value.customer || String(item['Customer'] || '').toLowerCase().includes(laborQuery.value.customer.toLowerCase());
+                        const matchPart = !laborQuery.value.partNo || String(item['Part No.'] || '').toLowerCase().includes(laborQuery.value.partNo.toLowerCase());
+                        const matchGoods = !laborQuery.value.goodsCode || String(item['Goods Code'] || '').toLowerCase().includes(laborQuery.value.goodsCode.toLowerCase());
+                        const matchCustPart = !laborQuery.value.custPartNo || String(item['Cust. Part No.'] || '').toLowerCase().includes(laborQuery.value.custPartNo.toLowerCase());
+                        return matchCustName && matchPart && matchGoods && matchCustPart;
+                    });
+                });
+
+                const totalManHours = computed(() => {
+                    return laborResults.value.reduce((sum, item) => sum + Number(item && item['Man-hours(h)'] ? item['Man-hours(h)'] : 0), 0);
+                });
+
+                const resetLaborQuery = () => {
+                    laborQuery.value = { customer: '', partNo: '', goodsCode: '', custPartNo: '' };
+                };
+
+                return {
+                    isAuthenticated, loginEmail, loginPassword, loginError, isLoggingIn,
+                    handleLogin, handleLogout, isOnline, lastSavedTime, isLoadingData,
+                    activeTab, crossQuery, laborQuery, crossResults, laborResults, totalManHours,
+                    resetCrossQuery, resetLaborQuery, seedDefaultData, importJsonFiles, importExcel, exportExcel, exportPNG
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
