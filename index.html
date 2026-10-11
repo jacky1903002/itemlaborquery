@@ -22,7 +22,7 @@
 
     <div id="app" class="flex flex-col min-h-screen">
 
-        <!-- 1. 登入畫面 (企業商業版) -->
+        <!-- 1. 登入畫面 -->
         <div v-if="!isAuthenticated" class="flex-grow flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900">
             <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-10 border border-slate-200">
                 <div class="text-center mb-8">
@@ -62,9 +62,9 @@
             </div>
         </div>
 
-        <!-- 2. 主系統畫面 (企業商業版) -->
+        <!-- 2. 主系統畫面 -->
         <div v-else class="flex flex-col flex-grow">
-            <!-- 頂端企業導覽列 -->
+            <!-- 頂端導覽列 -->
             <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
                 <div class="max-w-7xl mx-auto px-6 py-4 flex flex-wrap items-center justify-between gap-4">
                     <div class="flex items-center gap-4">
@@ -84,9 +84,9 @@
                         </div>
                     </div>
 
-                    <!-- 功能按鈕區 (大字體與活潑風格) -->
+                    <!-- 功能按鈕區 -->
                     <div class="flex flex-wrap items-center gap-3">
-                        <label class="px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-bold rounded-xl cursor-pointer transition shadow-xs flex items-center gap-2" title="可一次選取多個 labor01.json ~ labor10.json 檔案">
+                        <label class="px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-bold rounded-xl cursor-pointer transition shadow-xs flex items-center gap-2">
                             <i class="fa-solid fa-file-code text-lg"></i><span>匯入 JSON (01~10)</span>
                             <input type="file" @change="importJsonFiles" accept=".json" multiple class="hidden">
                         </label>
@@ -120,10 +120,9 @@
                 </div>
             </header>
 
-            <!-- 內容主體區 (可截圖區塊) -->
+            <!-- 內容主體區 -->
             <main id="capture-area" class="flex-grow max-w-7xl w-full mx-auto p-6 sm:p-8 space-y-8 bg-[#f8fafc]">
 
-                <!-- 載入中狀態 -->
                 <div v-if="isLoadingData" class="flex justify-center items-center py-28">
                     <div class="flex items-center gap-4 text-slate-600 text-lg font-bold"><i class="fa-solid fa-spinner animate-spin text-2xl text-blue-600"></i><span>正在從 Firebase 載入企業資料庫...</span></div>
                 </div>
@@ -153,7 +152,6 @@
                         </div>
                     </div>
 
-                    <!-- 交叉查詢結果表格 -->
                     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                         <div class="px-6 py-5 border-b border-slate-200 flex flex-wrap justify-between items-center gap-4 bg-slate-50/80">
                             <h3 class="font-extrabold text-slate-900 text-base">交叉對應結果 (共找到 <span class="text-blue-600">{{ crossResults.length }}</span> 筆)</h3>
@@ -218,7 +216,6 @@
                         </div>
                     </div>
 
-                    <!-- 工時完整表格結果 -->
                     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                         <div class="px-6 py-5 border-b border-slate-200 flex flex-wrap justify-between items-center gap-4 bg-slate-50/80">
                             <h3 class="font-extrabold text-slate-900 text-base">工時完整明細表 (共找到 <span class="text-blue-600">{{ laborResults.length }}</span> 筆相關製程)</h3>
@@ -281,12 +278,14 @@
             storageBucket: "itemlaborquery.firebasestorage.app",
             messagingSenderId: "980383382208",
             appId: "1:980383382208:web:0535c60bff860a85d9cb25",
-            measurementId: "G-YPDQQY9TGH"
+            measurementId: "G-YPDQQY9TGH",
+            databaseURL: "https://itemlaborquery-default-rtdb.firebaseio.com"
         };
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        const db = getDatabase(app);
+        // 強制明確指定資料庫 URL 執行個體
+        const db = getDatabase(app, "https://itemlaborquery-default-rtdb.firebaseio.com");
 
         const { createApp, ref: vueRef, computed } = Vue;
 
@@ -353,7 +352,7 @@
                         isLoadingData.value = false;
                         isOnline.value = true;
                     }, (error) => {
-                        console.error(error);
+                        console.error("Firebase 讀取錯誤:", error);
                         isOnline.value = false;
                         isLoadingData.value = false;
                     });
@@ -375,16 +374,18 @@
                         set(metaRef, { lastSaved: nowStr });
                         lastSavedTime.value = nowStr;
                         isOnline.value = true;
+                        console.log("資料已成功寫入 Firebase 即時資料庫！");
                     }).catch((err) => {
-                        console.error("儲存失敗", err);
+                        console.error("Firebase 寫入失敗:", err);
                         isOnline.value = false;
+                        alert("警告：資料寫入 Firebase 失敗！錯誤: " + err.message);
                     });
                 };
 
                 const seedDefaultData = () => {
                     if (confirm("確定要將資料庫載入預設範本資料嗎？")) {
                         saveToFirebase(sampleSeedData);
-                        alert("已成功載入範本資料！");
+                        alert("已成功載入範本資料並同步至雲端！");
                     }
                 };
 
