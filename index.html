@@ -336,6 +336,28 @@
                     signOut(auth);
                 };
 
+                // 協助將 Firebase 讀回來的資料轉換回正常欄位格式（處理含底線的 key）
+                const sanitizeDataFromFirebase = (rawObj) => {
+                    let list = Array.isArray(rawObj) ? rawObj.filter(Boolean) : Object.values(rawObj).filter(Boolean);
+                    return list.map(item => {
+                        let newItem = {};
+                        for (let key in item) {
+                            // 將雲端的底線還原成原本有點的欄位名稱
+                            let originalKey = key.replace(/_/g, '.');
+                            // 對特定已知欄位特別對應
+                            if (key === 'Part_No.') originalKey = 'Part No.';
+                            if (key === 'Cust._Part_No.') originalKey = 'Cust. Part No.';
+                            if (key === 'Man_hours_h_') originalKey = 'Man-hours(h)';
+                            newItem[originalKey] = item[key];
+                        }
+                        // 確保原本帶點的欄位也能直接取用
+                        if (item['Part_No.'] !== undefined) newItem['Part No.'] = item['Part_No.'];
+                        if (item['Cust._Part_No.'] !== undefined) newItem['Cust. Part No.'] = item['Cust. Part No.'];
+                        if (item['Man_hours_h_'] !== undefined) newItem['Man-hours(h)'] = item['Man_hours_h_'];
+                        return Object.assign({}, item, newItem);
+                    });
+                };
+
                 const initFirebaseDataSync = () => {
                     isLoadingData.value = true;
                     const dbRef = ref(db, 'itemsData');
@@ -344,7 +366,7 @@
                     onValue(dbRef, (snapshot) => {
                         const val = snapshot.val();
                         if (val) {
-                            allData.value = Array.isArray(val) ? val.filter(Boolean) : Object.values(val).filter(Boolean);
+                            allData.value = sanitizeDataFromFirebase(val);
                         } else {
                             allData.value = [];
                         }
@@ -352,7 +374,7 @@
                         isOnline.value = true;
                     }, (error) => {
                         console.error("Firebase 讀取錯誤:", error);
-                        isOnline.value, (isOnline.value = false);
+                        isOnline.value = false;
                         isLoadingData.value = false;
                     });
 
@@ -364,15 +386,25 @@
                     });
                 };
 
-                // 修正：使用 Promise 確保 Firebase `set` 完成，並將資料進行純 JSON 序列化避免 Vue Proxy 造成寫入失敗
+                // 核心修正：將資料寫入 Firebase 前，將 Key 中的 "." 與特殊字元替換掉，避免 Firebase 拒絕
                 const saveToFirebase = async (dataToSave) => {
                     try {
                         const dbRef = ref(db, 'itemsData');
                         const metaRef = ref(db, 'meta');
                         const nowStr = new Date().toLocaleString('zh-TW', { hour12: false });
 
-                        // 將資料轉為純 JS 物件（避免 Vue 響應式 Proxy 導致 Firebase 寫入異常）
-                        const cleanData = JSON.parse(JSON.stringify(dataToSave));
+                        // 轉換每個物件的 Key，把不合法的字元 (如 '.') 替換成 '_'
+                        const sanitizedData = dataToSave.map(item => {
+                            let cleanObj = {};
+                            for (let key in item) {
+                                // 將 Firebase 不允許的字元換成底線
+                                let safeKey = key.replace(/[.#$\[\]\/]/g, '_');
+                                cleanObj[safeKey] = item[key];
+                            }
+                            return cleanObj;
+                        });
+
+                        const cleanData = JSON.parse(JSON.stringify(sanitizedData));
 
                         await set(dbRef, cleanData);
                         await set(metaRef, { lastSaved: nowStr });
@@ -383,7 +415,7 @@
                     } catch (err) {
                         console.error("Firebase 寫入失敗:", err);
                         isOnline.value = false;
-                        alert("警告：資料寫入 Firebase 失敗！\n錯誤原因: " + err.message + "\n\n請檢查您的 Firebase Realtime Database Rules 權限設定是否允許寫入。");
+                        alert("警告：資料寫入 Firebase 失敗！\n錯誤原因: " + err.message);
                     }
                 };
 
@@ -481,16 +513,21 @@
 
                     return allData.value.filter(item => {
                         if (!item) return false;
-                        const matchPart = !p || String(item['Part No.'] || '').toLowerCase().includes(p);
-                        const matchGoods = !g || String(item['Goods Code'] || '').toLowerCase().includes(g);
-                        const matchCust = !c || String(item['Cust. Part No.'] || '').toLowerCase().includes(c);
+                        const partVal = String(item['Part No.'] || item['Part_No.'] || '');
+                        const goodsVal = String(item['Goods Code'] || item['Goods_Code'] || '');
+                        const custVal = String(item['Cust. Part No.'] || item['Cust__Part_No_'] || '');
+
+                        const matchPart = !p || partVal.toLowerCase().includes(p);
+                        const matchGoods = !g || goodsVal.toLowerCase().includes(g);
+                        const matchCust = !c || custVal.toLowerCase().includes(c);
                         return matchPart && matchGoods && matchCust;
                     });
                 });
 
                 const crossTotalManHours = computed(() => {
                     return crossResults.value.reduce((sum, item) => {
-                        const val = parseFloat(item && item['Man-hours(h)'] ? item['Man-hours(h)'] : 0);
+                        const rawVal = item['Man-hours(h)'] !== undefined ? item['Man-hours(h)'] : item['Man_hours_h_'];
+                        const val = parseFloat(rawVal ? rawVal : 0);
                         return sum + (isNaN(val) ? 0 : val);
                     }, 0).toFixed(2);
                 });
@@ -511,17 +548,23 @@
 
                     return allData.value.filter(item => {
                         if (!item) return false;
-                        const matchCustName = !cust || String(item['Customer'] || '').toLowerCase().includes(cust);
-                        const matchPart = !p || String(item['Part No.'] || '').toLowerCase().includes(p);
-                        const matchGoods = !g || String(item['Goods Code'] || '').toLowerCase().includes(g);
-                        const matchCustPart = !c || String(item['Cust. Part No.'] || '').toLowerCase().includes(c);
+                        const custNameVal = String(item['Customer'] || '');
+                        const partVal = String(item['Part No.'] || item['Part_No.'] || '');
+                        const goodsVal = String(item['Goods Code'] || item['Goods_Code'] || '');
+                        const custPartVal = String(item['Cust. Part No.'] || item['Cust__Part_No_'] || '');
+
+                        const matchCustName = !cust || custNameVal.toLowerCase().includes(cust);
+                        const matchPart = !p || partVal.toLowerCase().includes(p);
+                        const matchGoods = !g || goodsVal.toLowerCase().includes(g);
+                        const matchCustPart = !c || custPartVal.toLowerCase().includes(c);
                         return matchCustName && matchPart && matchGoods && matchCustPart;
                     });
                 });
 
                 const totalManHours = computed(() => {
                     return laborResults.value.reduce((sum, item) => {
-                        const val = parseFloat(item && item['Man-hours(h)'] ? item['Man-hours(h)'] : 0);
+                        const rawVal = item['Man-hours(h)'] !== undefined ? item['Man-hours(h)'] : item['Man_hours_h_'];
+                        const val = parseFloat(rawVal ? rawVal : 0);
                         return sum + (isNaN(val) ? 0 : val);
                     }, 0).toFixed(2);
                 });
