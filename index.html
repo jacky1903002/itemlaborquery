@@ -135,15 +135,15 @@
                         </h2>
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
                             <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-2">Part No. (內部品號)</label>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">Part No (產品品號)</label>
                                 <input type="text" v-model="crossQuery.partNo" placeholder="例如: 191" class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-base font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none">
                             </div>
                             <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-2">Goods Code (物料編碼)</label>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">Goods Code (產品貨號)</label>
                                 <input type="text" v-model="crossQuery.goodsCode" placeholder="例如: FAM" class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-base font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none">
                             </div>
                             <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-2">Cust. Part No. (客戶品號)</label>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">Cust Part No (客戶品號或規格)</label>
                                 <input type="text" v-model="crossQuery.custPartNo" placeholder="例如: 002" class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-base font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none">
                             </div>
                         </div>
@@ -164,19 +164,19 @@
                                 <thead>
                                     <tr class="bg-slate-100 text-slate-700 text-xs font-black uppercase tracking-wider border-b border-slate-200">
                                         <th class="py-4 px-6">Customer (客戶)</th>
-                                        <th class="py-4 px-6">Part No.</th>
+                                        <th class="py-4 px-6">Part No</th>
                                         <th class="py-4 px-6">Goods Code</th>
-                                        <th class="py-4 px-6">Cust. Part No.</th>
-                                        <th class="py-4 px-6 text-right">Man-hours(h)</th>
+                                        <th class="py-4 px-6">Cust Part No</th>
+                                        <th class="py-4 px-6 text-right">Man hours(h)</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-200 font-medium">
                                     <tr v-for="(item, idx) in crossResults" :key="idx" class="hover:bg-blue-50/60 transition">
                                         <td class="py-4 px-6 font-bold text-slate-900">{{ item.Customer || '-' }}</td>
-                                        <td class="py-4 px-6 text-blue-700 font-mono font-bold">{{ item['Part No.'] || '-' }}</td>
+                                        <td class="py-4 px-6 text-blue-700 font-mono font-bold">{{ item['Part No'] || '-' }}</td>
                                         <td class="py-4 px-6 text-slate-800 font-mono">{{ item['Goods Code'] || '-' }}</td>
-                                        <td class="py-4 px-6 text-slate-800 font-mono">{{ item['Cust. Part No.'] || '-' }}</td>
-                                        <td class="py-4 px-6 text-right font-mono font-bold text-emerald-700">{{ item['Man-hours(h)'] || 0 }}</td>
+                                        <td class="py-4 px-6 text-slate-800 font-mono">{{ item['Cust Part No'] || '-' }}</td>
+                                        <td class="py-4 px-6 text-right font-mono font-bold text-emerald-700">{{ item['Man hours(h)'] || 0 }}</td>
                                     </tr>
                                     <tr v-if="crossResults.length === 0">
                                         <td colspan="5" class="py-12 text-center text-slate-400 font-semibold text-lg">目前資料庫無內容或查無符合條件的交叉對應資料</td>
@@ -199,15 +199,15 @@
                                 <input type="text" v-model="laborQuery.customer" placeholder="例如: AMA" class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-base font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none">
                             </div>
                             <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-2">Part No.</label>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">Part No (產品品號)</label>
                                 <input type="text" v-model="laborQuery.partNo" placeholder="例如: 191" class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-base font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none">
                             </div>
                             <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-2">Goods Code</label>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">Goods Code (產品貨號)</label>
                                 <input type="text" v-model="laborQuery.goodsCode" placeholder="例如: FAM" class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-base font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none">
                             </div>
                             <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-2">Cust. Part No.</label>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">Cust Part No (客戶品號或規格)</label>
                                 <input type="text" v-model="laborQuery.custPartNo" placeholder="例如: 002" class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-base font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none">
                             </div>
                         </div>
@@ -228,23 +228,23 @@
                                 <thead>
                                     <tr class="bg-slate-100 text-slate-700 text-xs font-black uppercase tracking-wider border-b border-slate-200">
                                         <th class="py-4 px-6">Customer</th>
-                                        <th class="py-4 px-6">Part No.</th>
+                                        <th class="py-4 px-6">Part No</th>
                                         <th class="py-4 px-6">Goods Code</th>
-                                        <th class="py-4 px-6">Cust. Part No.</th>
+                                        <th class="py-4 px-6">Cust Part No</th>
                                         <th class="py-4 px-6 text-center">Line Code</th>
                                         <th class="py-4 px-6">Line Name (製程名稱)</th>
-                                        <th class="py-4 px-6 text-right">Man-hours(h)</th>
+                                        <th class="py-4 px-6 text-right">Man hours(h)</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-200 font-medium">
                                     <tr v-for="(item, idx) in laborResults" :key="idx" class="hover:bg-blue-50/60 transition">
                                         <td class="py-4 px-6 font-bold text-slate-900">{{ item.Customer || '-' }}</td>
-                                        <td class="py-4 px-6 text-blue-700 font-mono font-bold">{{ item['Part No.'] || '-' }}</td>
+                                        <td class="py-4 px-6 text-blue-700 font-mono font-bold">{{ item['Part No'] || '-' }}</td>
                                         <td class="py-4 px-6 text-slate-800 font-mono">{{ item['Goods Code'] || '-' }}</td>
-                                        <td class="py-4 px-6 text-slate-800 font-mono">{{ item['Cust. Part No.'] || '-' }}</td>
+                                        <td class="py-4 px-6 text-slate-800 font-mono">{{ item['Cust Part No'] || '-' }}</td>
                                         <td class="py-4 px-6 text-center font-bold text-slate-700">{{ item['Line Code'] || '-' }}</td>
                                         <td class="py-4 px-6 font-bold text-slate-900">{{ item['Line Name'] || '-' }}</td>
-                                        <td class="py-4 px-6 text-right font-mono font-black text-emerald-700">{{ item['Man-hours(h)'] || 0 }}</td>
+                                        <td class="py-4 px-6 text-right font-mono font-black text-emerald-700">{{ item['Man hours(h)'] || 0 }}</td>
                                     </tr>
                                     <tr v-if="laborResults.length === 0">
                                         <td colspan="7" class="py-12 text-center text-slate-400 font-semibold text-lg">目前資料庫無內容或查無符合條件的工時明細資料</td>
@@ -303,8 +303,8 @@
                 const allData = vueRef([]);
 
                 const sampleSeedData = [
-                    { Customer: "AMAT", "Part No.": "19100-AALE000", "Goods Code": "FAMT-871", "Cust. Part No.": "0023-60786", "Line Code": "001", "Line Name": "grinding", "Man-hours(h)": "4.00 " },
-                    { Customer: "AMAT", "Part No.": "19100-AALE000", "Goods Code": "FAMT-871", "Cust. Part No.": "0023-60786", "Line Code": "002", "Line Name": "metal-A", "Man-hours(h)": "3.00 " }
+                    { Customer: "AMAT", "Part No": "19100-AALE000", "Goods Code": "FAMT-871", "Cust Part No": "0023-60786", "Line Code": "001", "Line Name": "grinding", "Man hours(h)": "4.00 " },
+                    { Customer: "AMAT", "Part No": "19100-AALE000", "Goods Code": "FAMT-871", "Cust Part No": "0023-60786", "Line Code": "002", "Line Name": "metal-A", "Man hours(h)": "3.00 " }
                 ];
 
                 const crossQuery = vueRef({ partNo: '', goodsCode: '', custPartNo: '' });
@@ -336,28 +336,6 @@
                     signOut(auth);
                 };
 
-                // 協助將 Firebase 讀回來的資料轉換回正常欄位格式（處理含底線的 key）
-                const sanitizeDataFromFirebase = (rawObj) => {
-                    let list = Array.isArray(rawObj) ? rawObj.filter(Boolean) : Object.values(rawObj).filter(Boolean);
-                    return list.map(item => {
-                        let newItem = {};
-                        for (let key in item) {
-                            // 將雲端的底線還原成原本有點的欄位名稱
-                            let originalKey = key.replace(/_/g, '.');
-                            // 對特定已知欄位特別對應
-                            if (key === 'Part_No.') originalKey = 'Part No.';
-                            if (key === 'Cust._Part_No.') originalKey = 'Cust. Part No.';
-                            if (key === 'Man_hours_h_') originalKey = 'Man-hours(h)';
-                            newItem[originalKey] = item[key];
-                        }
-                        // 確保原本帶點的欄位也能直接取用
-                        if (item['Part_No.'] !== undefined) newItem['Part No.'] = item['Part_No.'];
-                        if (item['Cust._Part_No.'] !== undefined) newItem['Cust. Part No.'] = item['Cust. Part No.'];
-                        if (item['Man_hours_h_'] !== undefined) newItem['Man-hours(h)'] = item['Man_hours_h_'];
-                        return Object.assign({}, item, newItem);
-                    });
-                };
-
                 const initFirebaseDataSync = () => {
                     isLoadingData.value = true;
                     const dbRef = ref(db, 'itemsData');
@@ -366,7 +344,7 @@
                     onValue(dbRef, (snapshot) => {
                         const val = snapshot.val();
                         if (val) {
-                            allData.value = sanitizeDataFromFirebase(val);
+                            allData.value = Array.isArray(val) ? val.filter(Boolean) : Object.values(val).filter(Boolean);
                         } else {
                             allData.value = [];
                         }
@@ -386,25 +364,13 @@
                     });
                 };
 
-                // 核心修正：將資料寫入 Firebase 前，將 Key 中的 "." 與特殊字元替換掉，避免 Firebase 拒絕
                 const saveToFirebase = async (dataToSave) => {
                     try {
                         const dbRef = ref(db, 'itemsData');
                         const metaRef = ref(db, 'meta');
                         const nowStr = new Date().toLocaleString('zh-TW', { hour12: false });
 
-                        // 轉換每個物件的 Key，把不合法的字元 (如 '.') 替換成 '_'
-                        const sanitizedData = dataToSave.map(item => {
-                            let cleanObj = {};
-                            for (let key in item) {
-                                // 將 Firebase 不允許的字元換成底線
-                                let safeKey = key.replace(/[.#$\[\]\/]/g, '_');
-                                cleanObj[safeKey] = item[key];
-                            }
-                            return cleanObj;
-                        });
-
-                        const cleanData = JSON.parse(JSON.stringify(sanitizedData));
+                        const cleanData = JSON.parse(JSON.stringify(dataToSave));
 
                         await set(dbRef, cleanData);
                         await set(metaRef, { lastSaved: nowStr });
@@ -502,7 +468,6 @@
                     });
                 };
 
-                // 品號交叉查詢 (模糊比對)
                 const crossResults = computed(() => {
                     if (!Array.isArray(allData.value)) return [];
                     const p = crossQuery.value.partNo.trim().toLowerCase();
@@ -513,9 +478,9 @@
 
                     return allData.value.filter(item => {
                         if (!item) return false;
-                        const partVal = String(item['Part No.'] || item['Part_No.'] || '');
-                        const goodsVal = String(item['Goods Code'] || item['Goods_Code'] || '');
-                        const custVal = String(item['Cust. Part No.'] || item['Cust__Part_No_'] || '');
+                        const partVal = String(item['Part No'] || '');
+                        const goodsVal = String(item['Goods Code'] || '');
+                        const custVal = String(item['Cust Part No'] || '');
 
                         const matchPart = !p || partVal.toLowerCase().includes(p);
                         const matchGoods = !g || goodsVal.toLowerCase().includes(g);
@@ -526,7 +491,7 @@
 
                 const crossTotalManHours = computed(() => {
                     return crossResults.value.reduce((sum, item) => {
-                        const rawVal = item['Man-hours(h)'] !== undefined ? item['Man-hours(h)'] : item['Man_hours_h_'];
+                        const rawVal = item['Man hours(h)'];
                         const val = parseFloat(rawVal ? rawVal : 0);
                         return sum + (isNaN(val) ? 0 : val);
                     }, 0).toFixed(2);
@@ -536,7 +501,6 @@
                     crossQuery.value = { partNo: '', goodsCode: '', custPartNo: '' };
                 };
 
-                // 工時查詢系統 (模糊比對)
                 const laborResults = computed(() => {
                     if (!Array.isArray(allData.value)) return [];
                     const cust = laborQuery.value.customer.trim().toLowerCase();
@@ -549,9 +513,9 @@
                     return allData.value.filter(item => {
                         if (!item) return false;
                         const custNameVal = String(item['Customer'] || '');
-                        const partVal = String(item['Part No.'] || item['Part_No.'] || '');
-                        const goodsVal = String(item['Goods Code'] || item['Goods_Code'] || '');
-                        const custPartVal = String(item['Cust. Part No.'] || item['Cust__Part_No_'] || '');
+                        const partVal = String(item['Part No'] || '');
+                        const goodsVal = String(item['Goods Code'] || '');
+                        const custPartVal = String(item['Cust Part No'] || '');
 
                         const matchCustName = !cust || custNameVal.toLowerCase().includes(cust);
                         const matchPart = !p || partVal.toLowerCase().includes(p);
@@ -563,7 +527,7 @@
 
                 const totalManHours = computed(() => {
                     return laborResults.value.reduce((sum, item) => {
-                        const rawVal = item['Man-hours(h)'] !== undefined ? item['Man-hours(h)'] : item['Man_hours_h_'];
+                        const rawVal = item['Man hours(h)'];
                         const val = parseFloat(rawVal ? rawVal : 0);
                         return sum + (isNaN(val) ? 0 : val);
                     }, 0).toFixed(2);
