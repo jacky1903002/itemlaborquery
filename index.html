@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>工時與品號檢索系統 - Firebase 即時資料庫 (多JSON來源)</title>
+    <title>工時與品號檢索系統 - Firebase 即時資料庫 (模糊檢索)</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Vue 3 -->
@@ -83,7 +83,6 @@
 
                     <!-- 功能按鈕區 -->
                     <div class="flex flex-wrap items-center gap-2">
-                        <!-- 多 JSON 檔案上傳 (labor01.json ~ labor10.json) -->
                         <label class="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-medium rounded-lg cursor-pointer transition flex items-center gap-1.5" title="可一次選取多個 labor01.json ~ labor10.json 檔案">
                             <i class="fa-solid fa-file-code"></i><span>匯入 JSON (labor01~10)</span>
                             <input type="file" @change="importJsonFiles" accept=".json" multiple class="hidden">
@@ -130,20 +129,20 @@
                 <div v-else-if="activeTab === 'cross'" class="space-y-6">
                     <div class="bg-white p-5 rounded-xl shadow-xs border border-slate-200">
                         <h2 class="text-base font-bold text-slate-800 mb-3 flex items-center gap-2">
-                            <i class="fa-solid fa-magnifying-glass text-blue-600"></i>品號交叉查詢條件
+                            <i class="fa-solid fa-magnifying-glass text-blue-600"></i>品號交叉查詢條件 (支援模糊比對，輸入前三碼即可自動檢索)
                         </h2>
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
                                 <label class="block text-xs font-medium text-slate-600 mb-1">Part No. (內部品號)</label>
-                                <input type="text" v-model="crossQuery.partNo" placeholder="輸入或選擇 Part No." class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                <input type="text" v-model="crossQuery.partNo" placeholder="例如: 191 (支援前三碼模糊搜尋)" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-slate-600 mb-1">Goods Code (物料編碼)</label>
-                                <input type="text" v-model="crossQuery.goodsCode" placeholder="輸入或選擇 Goods Code" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                <input type="text" v-model="crossQuery.goodsCode" placeholder="例如: FAM (支援前三碼模糊搜尋)" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-slate-600 mb-1">Cust. Part No. (客戶品號)</label>
-                                <input type="text" v-model="crossQuery.custPartNo" placeholder="輸入或選擇 Cust. Part No." class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                <input type="text" v-model="crossQuery.custPartNo" placeholder="例如: 002 (支援前三碼模糊搜尋)" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                             </div>
                         </div>
                         <div class="mt-4 flex justify-end gap-2">
@@ -186,24 +185,24 @@
                 <div v-else-if="activeTab === 'labor'" class="space-y-6">
                     <div class="bg-white p-5 rounded-xl shadow-xs border border-slate-200">
                         <h2 class="text-base font-bold text-slate-800 mb-3 flex items-center gap-2">
-                            <i class="fa-solid fa-stopwatch text-blue-600"></i>工時查詢系統條件 (支援任一欄位檢索)
+                            <i class="fa-solid fa-stopwatch text-blue-600"></i>工時查詢系統條件 (支援模糊比對，任一欄位輸入前三碼即可檢索)
                         </h2>
                         <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
                             <div>
                                 <label class="block text-xs font-medium text-slate-600 mb-1">Customer (客戶)</label>
-                                <input type="text" v-model="laborQuery.customer" placeholder="例如: AMAT" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                <input type="text" v-model="laborQuery.customer" placeholder="例如: AMA" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-slate-600 mb-1">Part No.</label>
-                                <input type="text" v-model="laborQuery.partNo" placeholder="輸入 Part No." class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                <input type="text" v-model="laborQuery.partNo" placeholder="例如: 191" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-slate-600 mb-1">Goods Code</label>
-                                <input type="text" v-model="laborQuery.goodsCode" placeholder="輸入 Goods Code" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                <input type="text" v-model="laborQuery.goodsCode" placeholder="例如: FAM" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-slate-600 mb-1">Cust. Part No.</label>
-                                <input type="text" v-model="laborQuery.custPartNo" placeholder="輸入 Cust. Part No." class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                <input type="text" v-model="laborQuery.custPartNo" placeholder="例如: 002" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                             </div>
                         </div>
                         <div class="mt-4 flex justify-end gap-2">
@@ -243,7 +242,7 @@
                                         <td class="py-3 px-4 text-right font-mono font-bold text-emerald-600">{{ item['Man-hours(h)'] || 0 }}</td>
                                     </tr>
                                     <tr v-if="laborResults.length === 0">
-                                        <td colspan="7" class="py-8 text-center text-slate-400">目前資料庫無內容或查無符合條件的工時明細資料 (請上傳 labor01~10.json 或點擊載入範本)</td>
+                                        <td colspan="7" class="py-8 text-center text-slate-400">目前資料庫無內容或查無符合條件的工時明細資料</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -267,7 +266,6 @@
         import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // Firebase 專案設定
         const firebaseConfig = {
             apiKey: "AIzaSyDFnnqG1bzT-RwKzkBZNKIat2wqpzbuad0",
             authDomain: "itemlaborquery.firebaseapp.com",
@@ -298,29 +296,14 @@
 
                 const allData = vueRef([]);
 
-                // 預設範本資料
                 const sampleSeedData = [
-                    { Customer: "AMAT", "Part No.": "19100-AALE000", "Goods Code": "FAMT-871", "Cust. Part No.": "0023-60786", "Line Code": 1, "Line Name": "grinding", "Man-hours(h)": 4 },
-                    { Customer: "AMAT", "Part No.": "19100-AALE000", "Goods Code": "FAMT-871", "Cust. Part No.": "0023-60786", "Line Code": 2, "Line Name": "metal-A", "Man-hours(h)": 3 },
-                    { Customer: "AMAT", "Part No.": "19100-AALE000", "Goods Code": "FAMT-871", "Cust. Part No.": "0023-60786", "Line Code": 3, "Line Name": "metal-B", "Man-hours(h)": 2 },
-                    { Customer: "AMAT", "Part No.": "19100-AALE000", "Goods Code": "FAMT-871", "Cust. Part No.": "0023-60786", "Line Code": 4, "Line Name": "metal-C", "Man-hours(h)": 4 },
-                    { Customer: "AMAT", "Part No.": "19100-AALE000", "Goods Code": "FAMT-871", "Cust. Part No.": "0023-60786", "Line Code": 5, "Line Name": "clean", "Man-hours(h)": 2 },
-                    { Customer: "AMAT", "Part No.": "19100-AALE000", "Goods Code": "FAMT-871", "Cust. Part No.": "0023-60786", "Line Code": 6, "Line Name": "QC", "Man-hours(h)": 2 },
-                    { Customer: "AMAT", "Part No.": "19100-AALE000", "Goods Code": "FAMT-871", "Cust. Part No.": "0023-60786", "Line Code": 7, "Line Name": "package", "Man-hours(h)": 1 },
-                    { Customer: "AMAT", "Part No.": "19107-AALE000", "Goods Code": "FAMT-234", "Cust. Part No.": "0043-21179", "Line Code": 1, "Line Name": "grinding", "Man-hours(h)": 2 },
-                    { Customer: "AMAT", "Part No.": "19107-AALE000", "Goods Code": "FAMT-234", "Cust. Part No.": "0043-21179", "Line Code": 2, "Line Name": "metal-A", "Man-hours(h)": 1 },
-                    { Customer: "AMAT", "Part No.": "19107-AALE000", "Goods Code": "FAMT-234", "Cust. Part No.": "0043-21179", "Line Code": 3, "Line Name": "metal-B", "Man-hours(h)": 3 },
-                    { Customer: "AMAT", "Part No.": "19107-AALE000", "Goods Code": "FAMT-234", "Cust. Part No.": "0043-21179", "Line Code": 4, "Line Name": "metal-C", "Man-hours(h)": 2 },
-                    { Customer: "AMAT", "Part No.": "19107-AALE000", "Goods Code": "FAMT-234", "Cust. Part No.": "0043-21179", "Line Code": 5, "Line Name": "clean", "Man-hours(h)": 4 },
-                    { Customer: "AMAT", "Part No.": "19107-AALE000", "Goods Code": "FAMT-234", "Cust. Part No.": "0043-21179", "Line Code": 6, "Line Name": "QC", "Man-hours(h)": 2 },
-                    { Customer: "AMAT", "Part No.": "19107-AALE000", "Goods Code": "FAMT-234", "Cust. Part No.": "0043-21179", "Line Code": 7, "Line Name": "package", "Man-hours(h)": 2 }
+                    { Customer: "AMAT", "Part No.": "19100-AALE000", "Goods Code": "FAMT-871", "Cust. Part No.": "0023-60786", "Line Code": "001", "Line Name": "grinding", "Man-hours(h)": "4.00 " },
+                    { Customer: "AMAT", "Part No.": "19100-AALE000", "Goods Code": "FAMT-871", "Cust. Part No.": "0023-60786", "Line Code": "002", "Line Name": "metal-A", "Man-hours(h)": "3.00 " }
                 ];
 
-                // 檢索條件
                 const crossQuery = vueRef({ partNo: '', goodsCode: '', custPartNo: '' });
                 const laborQuery = vueRef({ customer: '', partNo: '', goodsCode: '', custPartNo: '' });
 
-                // 監聽登入狀態
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
                         isAuthenticated.value = true;
@@ -331,7 +314,6 @@
                     }
                 });
 
-                // 登入處理
                 const handleLogin = async () => {
                     isLoggingIn.value = true;
                     loginError.value = '';
@@ -344,12 +326,10 @@
                     }
                 };
 
-                // 登出處理
                 const handleLogout = () => {
                     signOut(auth);
                 };
 
-                // 同步 Realtime Database 資料
                 const initFirebaseDataSync = () => {
                     isLoadingData.value = true;
                     const dbRef = ref(db, 'itemsData');
@@ -357,8 +337,8 @@
 
                     onValue(dbRef, (snapshot) => {
                         const val = snapshot.val();
-                        if (val && Array.isArray(val)) {
-                            allData.value = val;
+                        if (val) {
+                            allData.value = Array.isArray(val) ? val.filter(Boolean) : Object.values(val).filter(Boolean);
                         } else {
                             allData.value = [];
                         }
@@ -378,7 +358,6 @@
                     });
                 };
 
-                // 儲存至 Firebase Realtime Database
                 const saveToFirebase = (dataToSave) => {
                     const dbRef = ref(db, 'itemsData');
                     const metaRef = ref(db, 'meta');
@@ -394,7 +373,6 @@
                     });
                 };
 
-                // 載入預設範本
                 const seedDefaultData = () => {
                     if (confirm("確定要將資料庫載入預設範本資料嗎？")) {
                         saveToFirebase(sampleSeedData);
@@ -402,22 +380,17 @@
                     }
                 };
 
-                // 支援一次選取多個 labor01.json ~ labor10.json 檔案進行合併與防呆
                 const importJsonFiles = async (e) => {
                     const files = e.target.files;
                     if (!files || files.length === 0) return;
 
                     let combinedData = [];
-                    let readErrors = 0;
 
                     for (let i = 0; i < files.length; i++) {
                         const file = files[i];
                         try {
                             const text = await file.text();
-                            if (!text || text.trim() === "") {
-                                console.warn(`檔案 ${file.name} 內容為空`);
-                                continue;
-                            }
+                            if (!text || text.trim() === "") continue;
                             const jsonData = JSON.parse(text);
                             if (Array.isArray(jsonData)) {
                                 combinedData = combinedData.concat(jsonData);
@@ -426,7 +399,6 @@
                             }
                         } catch (err) {
                             console.error(`解析 ${file.name} 失敗:`, err);
-                            readErrors++;
                         }
                     }
 
@@ -435,12 +407,11 @@
                         saveToFirebase(combinedData);
                         alert(`成功匯入 ${files.length} 個 JSON 檔案，共計 ${combinedData.length} 筆資料，並同步至 Firebase！`);
                     } else {
-                        alert("所選的 JSON 檔案皆無有效資料或格式不符，資料維持不變。");
+                        alert("所選的 JSON 檔案皆無有效資料或格式不符。");
                     }
                     e.target.value = '';
                 };
 
-                // Excel 匯入
                 const importExcel = (e) => {
                     const files = e.target.files;
                     if (!files || files.length === 0) return;
@@ -450,16 +421,11 @@
                         try {
                             const data = new Uint8Array(event.target.result);
                             const workbook = XLSX.read(data, { type: 'array' });
-                            const firstSheetName = workbook.SheetNames[0];
-                            const worksheet = workbook.Sheets[firstSheetName];
-                            const json = XLSX.utils.sheet_to_json(worksheet);
-                            
+                            const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
                             if (json && json.length > 0) {
                                 allData.value = json;
                                 saveToFirebase(json);
                                 alert(`成功匯入 ${json.length} 筆資料並同步至 Firebase！`);
-                            } else {
-                                alert("匯入的檔案無有效資料。");
                             }
                         } catch (err) {
                             alert("檔案解析失敗: " + err.message);
@@ -469,7 +435,6 @@
                     e.target.value = '';
                 };
 
-                // Excel 匯出
                 const exportExcel = () => {
                     if (!allData.value || allData.value.length === 0) {
                         alert("目前資料庫無內容可供匯出。");
@@ -481,7 +446,6 @@
                     XLSX.writeFile(workbook, "Item_Labor_Export_" + new Date().toISOString().slice(0,10) + ".xlsx");
                 };
 
-                // 一鍵匯出 PNG
                 const exportPNG = () => {
                     const captureElement = document.getElementById('capture-area');
                     html2canvas(captureElement, { scale: 2 }).then(canvas => {
@@ -492,14 +456,23 @@
                     });
                 };
 
-                // 品號交叉查詢過濾 (具備空資料防呆)
+                // 品號交叉查詢 (模糊比對：支援輸入任意前三碼或部分字元即自動過濾)
                 const crossResults = computed(() => {
                     if (!Array.isArray(allData.value)) return [];
+                    const p = crossQuery.value.partNo.trim().toLowerCase();
+                    const g = crossQuery.value.goodsCode.trim().toLowerCase();
+                    const c = crossQuery.value.custPartNo.trim().toLowerCase();
+
+                    // 若全部未輸入則顯示提示或清空列表（此處未輸入時顯示空，避免全部列出）
+                    if (!p && !g && !c) return [];
+
                     return allData.value.filter(item => {
                         if (!item) return false;
-                        const matchPart = !crossQuery.value.partNo || String(item['Part No.'] || '').toLowerCase().includes(crossQuery.value.partNo.toLowerCase());
-                        const matchGoods = !crossQuery.value.goodsCode || String(item['Goods Code'] || '').toLowerCase().includes(crossQuery.value.goodsCode.toLowerCase());
-                        const matchCust = !crossQuery.value.custPartNo || String(item['Cust. Part No.'] || '').toLowerCase().includes(crossQuery.value.custPartNo.toLowerCase());
+                        const matchPart = !p || String(item['Part No.'] || '').toLowerCase().includes(p);
+                        const matchGoods = !g || String(item['Goods Code'] || '').toLowerCase().includes(g);
+                        const matchCust = !c || String(item['Cust. Part No.'] || '').toLowerCase().includes(c);
+                        
+                        // 只要有填寫的欄位部分符合（包含前三碼）即通過
                         return matchPart && matchGoods && matchCust;
                     });
                 });
@@ -508,21 +481,31 @@
                     crossQuery.value = { partNo: '', goodsCode: '', custPartNo: '' };
                 };
 
-                // 工時查詢系統過濾 (具備空資料防呆)
+                // 工時查詢系統 (模糊比對：支援輸入任意欄位的前三碼或關鍵字即可帶出完整明細)
                 const laborResults = computed(() => {
                     if (!Array.isArray(allData.value)) return [];
+                    const cust = laborQuery.value.customer.trim().toLowerCase();
+                    const p = laborQuery.value.partNo.trim().toLowerCase();
+                    const g = laborQuery.value.goodsCode.trim().toLowerCase();
+                    const c = laborQuery.value.custPartNo.trim().toLowerCase();
+
+                    if (!cust && !p && !g && !c) return [];
+
                     return allData.value.filter(item => {
                         if (!item) return false;
-                        const matchCustName = !laborQuery.value.customer || String(item['Customer'] || '').toLowerCase().includes(laborQuery.value.customer.toLowerCase());
-                        const matchPart = !laborQuery.value.partNo || String(item['Part No.'] || '').toLowerCase().includes(laborQuery.value.partNo.toLowerCase());
-                        const matchGoods = !laborQuery.value.goodsCode || String(item['Goods Code'] || '').toLowerCase().includes(laborQuery.value.goodsCode.toLowerCase());
-                        const matchCustPart = !laborQuery.value.custPartNo || String(item['Cust. Part No.'] || '').toLowerCase().includes(laborQuery.value.custPartNo.toLowerCase());
+                        const matchCustName = !cust || String(item['Customer'] || '').toLowerCase().includes(cust);
+                        const matchPart = !p || String(item['Part No.'] || '').toLowerCase().includes(p);
+                        const matchGoods = !g || String(item['Goods Code'] || '').toLowerCase().includes(g);
+                        const matchCustPart = !c || String(item['Cust. Part No.'] || '').toLowerCase().includes(c);
                         return matchCustName && matchPart && matchGoods && matchCustPart;
                     });
                 });
 
                 const totalManHours = computed(() => {
-                    return laborResults.value.reduce((sum, item) => sum + Number(item && item['Man-hours(h)'] ? item['Man-hours(h)'] : 0), 0);
+                    return laborResults.value.reduce((sum, item) => {
+                        const val = parseFloat(item && item['Man-hours(h)'] ? item['Man-hours(h)'] : 0);
+                        return sum + (isNaN(val) ? 0 : val);
+                    }, 0).toFixed(2);
                 });
 
                 const resetLaborQuery = () => {
